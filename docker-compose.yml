@@ -1,0 +1,21 @@
+version: "3.9"
+
+services:
+  account:
+    build:
+      context: ./services/account
+      dockerfile: Dockerfile
+    working_dir: /app
+    volumes:
+      - ./services/account:/app
+      - cargo-registry:/usr/local/cargo/registry
+      - cargo-git:/usr/local/cargo/git
+    ports:
+      - "8080:8080"
+    environment:
+      - RUST_LOG=debug
+    command: ["cargo", "watch", "-x", "run", "-w", "src", "-w", "Cargo.toml"]
+
+volumes:
+  cargo-registry:
+  cargo-git:
