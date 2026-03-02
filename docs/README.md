@@ -1,115 +1,93 @@
 # can-bank-x
 
-## API Gateway (KrakenD)
+## Network
 
-KrakenD is the single entry point for all APIs.
+All services share external Docker network `can-bank-x-network`.
 
-- Gateway URL: `http://localhost:8080`
-- Gateway URL from containers in shared network: `http://gateway:8080`
-- Base prefix: `/api/v1`
-- KrakenD config: [gateway/krakend.json](gateway/krakend.json)
+- Create once: `docker network create can-bank-x-network`
+- Backend gateway is reachable as `http://gateway:8080` from other containers on the same network.
 
-### Docker network
+## Gateway (KrakenD)
 
-All backend services use one shared Docker network named `can-bank-x-network`.
+Gateway config: `gateway/krakend.json`
 
-- Create it once (before `docker compose up`): `docker network create can-bank-x-network`
-- In another repo (frontend), join the same external network and call backend by service name (e.g. `http://gateway:8080`, `postgres:5432`).
-
-### Routing
-
-- `/api/v1/auth/**` -> `user-service`
-- `/api/v1/customers/**` -> `user-service`
-- `/api/v1/kyc/**` -> `user-service`
-- `/api/v1/accounts/**` -> `account-service`
-- `/api/v1/transfers/**` -> `transfer-service`
-
-### JWT validation (Keycloak)
-
-For protected routes, KrakenD validates JWTs against Keycloak JWKS:
-
-- JWKS: `http://keycloak:8080/realms/can-bank-x/protocol/openid-connect/certs`
-- `alg`: `RS256`
-- `iss`: `http://keycloak:8080/realms/can-bank-x`
-- `aud`: `can-bank-x-api`
-- Invalid or missing token -> `401`
-
-### Security
-
-- CORS only allows frontend origin: `http://localhost:3000`
+- Public entrypoint: `http://localhost:8080`
+- JWT validation (RS256 + JWKS) is enabled on protected routes with issuer `http://keycloak:8080/realms/can-bank-x` and audience `can-bank-x-api`.
+- JWT `sub` is propagated to backend in header `X-User-Sub`.
+- Trace headers `X-Trace-Id` and `X-Request-Id` are forwarded to services.
 - Rate limiting:
   - `POST /api/v1/customers/register`
-  - `/api/v1/transfers/**`
+  - `/api/v1/kyc/*`
+  - `/api/v1/transfers/*`
 
-### Observability
+## Keycloak bootstrap
 
-- Request logs enabled at gateway
+- Realm import file: `infra/keycloak/realm-can-bank-x.json`
+- Docker compose starts Keycloak with `--import-realm`.
+- Seeded realm/client/user:
+  - Realm: `can-bank-x`
+  - Client: `can-bank-x-api`
+  - User: `demo.customer` / `Passw0rd!`
+  - Required action: TOTP (`CONFIGURE_TOTP`)
 
-## Database & Migrations
+## Database and migrations
 
-A single PostgreSQL instance is used, with one database per service:
+Single Postgres instance with dedicated DB per service:
 
-- `canbankx_user` (user-service)
-- `canbankx_account` (account-service)
-- `canbankx_transfer` (transfer-service)
+- `canbankx_user`
+- `canbankx_account`
+- `canbankx_transfer`
 
-Postgres initializes these databases via [infra/postgres/init-multiple-dbs.sh](infra/postgres/init-multiple-dbs.sh).
+Migration files:
 
-Environment variables are defined in [.env.example](.env.example):
-- `POSTGRES_USER`
-- `POSTGRES_PASSWORD`
-- `USER_SERVICE_DATABASE_URL`
-- `ACCOUNT_SERVICE_DATABASE_URL`
-- `TRANSFER_SERVICE_DATABASE_URL`
+- `services/user-services/migrations/2026030201_init.sql`
+- `services/account/migrations/2026030201_init.sql`
+- `services/transfer/migrations/2026030201_init.sql`
 
-### Run Postgres
-- `docker network create can-bank-x-network`
-- `docker compose up -d postgres`
+Apply migrations manually:
 
-### Create DBs
+- `docker exec -i postgres psql -U canbankx_me_user -d canbankx_user < services/user-services/migrations/2026030201_init.sql`
+- `docker exec -i postgres psql -U canbankx_me_user -d canbankx_account < services/account/migrations/2026030201_init.sql`
+- `docker exec -i postgres psql -U canbankx_me_user -d canbankx_transfer < services/transfer/migrations/2026030201_init.sql`
 
-- `sh infra/postgres/init-multiple-dbs.sh`
+## user-service endpoints
 
-User service:
-- `docker exec -i postgres psql -U canbankx_me_user -d canbankx_user < services/user-services/migrations/<filename>.sql`
+- `GET /api/v1/auth/me`
+- `POST /api/v1/customers/register`
+- `GET /api/v1/customers/me`
+- `POST /api/v1/kyc/submit`
+- `POST /api/v1/kyc/confirm`
+- `GET /api/v1/kyc/status`
 
-Account service:
-- `docker exec -i postgres psql -U canbankx_me_user -d canbankx_account < services/account/migrations/<filename>.sql`
+Error responses follow:
 
-Transfer service:
-- `docker exec -i postgres psql -U canbankx_me_user -d canbankx_transfer < services/transfer/migrations/<filename>.sql`
+```json
+{
+  "code": "...",
+  "message": "...",
+  "details": [],
+  "traceId": "..."
+}
+```
 
-Verify:
-- `docker exec -it postgres psql -U canbankx_me_user -d canbankx_user -c "\dt"`
-- `docker exec -it postgres psql -U canbankx_me_user -d canbankx_account -c "\dt"`
-- `docker exec -it postgres psql -U canbankx_me_user -d canbankx_transfer -c "\dt"`
+## API artifacts
 
-### Constraints checks
+- OpenAPI: `docs/openapi-user-service.yaml`
+- Postman collection: `docs/postman/can-bank-x.postman_collection.json`
+- Postman local env: `docs/postman/can-bank-x.local.postman_environment.json`
 
-- user-service duplicate email/sub must fail (`UNIQUE`)
-- user-service one KYC case per customer (`UNIQUE(customer_id)`)
-- transfer idempotency must fail for same `(customer_id, idempotency_key)`
-- audit tables are append-only (DB triggers block UPDATE/DELETE)
+## SQL assertion tests
 
-Automatic SQL assertion tests:
+- Runner: `tests/run-db-constraint-tests.sh`
+- Assertions:
+  - `tests/sql/user_constraints.sql`
+  - `tests/sql/account_constraints.sql`
+  - `tests/sql/transfer_constraints.sql`
+
+Run all:
 
 - `sh tests/run-db-constraint-tests.sh`
 
-Individual SQL assertion files:
-
-- `tests/sql/user_constraints.sql`
-- `tests/sql/account_constraints.sql`
-- `tests/sql/transfer_constraints.sql`
-
-### Local audit strategy
-
-- user-service writes user/onboarding/KYC audit events
-- account-service writes account audit events
-- transfer-service writes transfer audit events
-
-
-### Run
-
-From repository root:
+## Run stack
 
 - `docker compose up --build`
