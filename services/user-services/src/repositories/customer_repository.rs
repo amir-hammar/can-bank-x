@@ -1,0 +1,77 @@
+use sqlx::{Pool, Postgres, Transaction};
+
+use crate::models::{
+    domain::customer::{Customer, CustomerProfile, CustomerWithProfile},
+    dto::customer_dto::RegisterRequest,
+};
+
+pub async fn insert_customer_with_profile(
+    tx: &mut Transaction<'_, Postgres>,
+    keycloak_sub: &str,
+    payload: &RegisterRequest,
+) -> Result<CustomerWithProfile, sqlx::Error> {
+    let customer = sqlx::query_as::<_, Customer>(
+        r#"
+        INSERT INTO customers (keycloak_sub, email, status)
+        VALUES ($1, $2, 'PENDING')
+        RETURNING id::text, keycloak_sub, email, status, created_at, updated_at
+        "#,
+    )
+    .bind(keycloak_sub)
+    .bind(&payload.email)
+    .fetch_one(&mut **tx)
+    .await?;
+
+    let profile = sqlx::query_as::<_, CustomerProfile>(
+        r#"
+        INSERT INTO customer_profiles (customer_id, full_name, street, city, province, postal_code, country, nas)
+        VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING customer_id::text, full_name, street, city, province, postal_code, country, nas, created_at
+        "#,
+    )
+    .bind(&customer.id)
+    .bind(&payload.full_name)
+    .bind(&payload.street)
+    .bind(&payload.city)
+    .bind(&payload.province)
+    .bind(&payload.postal_code)
+    .bind(&payload.country)
+    .bind(&payload.nas)
+    .fetch_one(&mut **tx)
+    .await?;
+
+    Ok(CustomerWithProfile { customer, profile })
+}
+
+pub async fn get_customer_with_profile_by_sub(
+    pool: &Pool<Postgres>,
+    keycloak_sub: &str,
+) -> Result<Option<CustomerWithProfile>, sqlx::Error> {
+    let row = sqlx::query_as::<_, Customer>(
+        r#"
+        SELECT id::text, keycloak_sub, email, status, created_at, updated_at
+        FROM customers
+        WHERE keycloak_sub = $1
+        "#,
+    )
+    .bind(keycloak_sub)
+    .fetch_optional(pool)
+    .await?;
+
+    let Some(customer) = row else {
+        return Ok(None);
+    };
+
+    let profile = sqlx::query_as::<_, CustomerProfile>(
+        r#"
+        SELECT customer_id::text, full_name, street, city, province, postal_code, country, nas, created_at
+        FROM customer_profiles
+        WHERE customer_id = $1::uuid
+        "#,
+    )
+    .bind(&customer.id)
+    .fetch_one(pool)
+    .await?;
+
+    Ok(Some(CustomerWithProfile { customer, profile }))
+}

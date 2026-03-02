@@ -1,0 +1,91 @@
+{
+  "info": {
+    "name": "can-bank-x API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth Me",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{access_token}}" },
+          { "key": "X-Trace-Id", "value": "{{$guid}}" }
+        ],
+        "url": "{{gateway_base}}/api/v1/auth/me"
+      }
+    },
+    {
+      "name": "Register Customer",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{access_token}}" },
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-Trace-Id", "value": "{{$guid}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"demo.customer@example.com\",\n  \"full_name\": \"Demo Customer\",\n  \"street\": \"123 Main St\",\n  \"city\": \"Montreal\",\n  \"province\": \"QC\",\n  \"postal_code\": \"H2X1Z5\",\n  \"country\": \"Canada\",\n  \"nas\": \"123456789\"\n}"
+        },
+        "url": "{{gateway_base}}/api/v1/customers/register"
+      }
+    },
+    {
+      "name": "Customer Me",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{access_token}}" },
+          { "key": "X-Trace-Id", "value": "{{$guid}}" }
+        ],
+        "url": "{{gateway_base}}/api/v1/customers/me"
+      }
+    },
+    {
+      "name": "KYC Submit",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{access_token}}" },
+          { "key": "X-Trace-Id", "value": "{{$guid}}" }
+        ],
+        "url": "{{gateway_base}}/api/v1/kyc/submit"
+      }
+    },
+    {
+      "name": "KYC Confirm",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{access_token}}" },
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-Trace-Id", "value": "{{$guid}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"approved\": true\n}"
+        },
+        "url": "{{gateway_base}}/api/v1/kyc/confirm"
+      }
+    },
+    {
+      "name": "KYC Status",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{access_token}}" },
+          { "key": "X-Trace-Id", "value": "{{$guid}}" }
+        ],
+        "url": "{{gateway_base}}/api/v1/kyc/status"
+      }
+    },
+    {
+      "name": "Unauthorized Check",
+      "request": {
+        "method": "GET",
+        "url": "{{gateway_base}}/api/v1/customers/me"
+      }
+    }
+  ]
+}
