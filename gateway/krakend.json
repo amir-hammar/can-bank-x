@@ -33,20 +33,43 @@
   },
   "endpoints": [
     {
-      "endpoint": "/api/v1/auth/{path:.*}",
-      "input_headers": ["Authorization", "Content-Type"],
+      "endpoint": "/api/v1/auth/me",
+      "method": "GET",
+      "input_headers": ["Authorization", "Content-Type", "X-Trace-Id", "X-Request-Id"],
+      "extra_config": {
+        "github.com/devopsfaith/krakend-jose/validator": {
+          "alg": "RS256",
+          "jwk_url": "http://keycloak:8080/realms/can-bank-x/protocol/openid-connect/certs",
+          "issuer": "http://keycloak:8080/realms/can-bank-x",
+          "audience": ["can-bank-x-api"],
+          "disable_jwk_security": true,
+          "propagate_claims": [["sub", "X-User-Sub"]]
+        }
+      },
       "backend": [
         {
           "host": ["http://user-service:8080"],
+<<<<<<< HEAD
           "url_pattern": "/api/v1/auth/{path}"
+=======
+          "url_pattern": "/api/v1/auth/me"
+>>>>>>> fdc62a74c87bea883c40e3e18586b5f310eb5151
         }
       ]
     },
     {
       "endpoint": "/api/v1/customers/register",
       "method": "POST",
-      "input_headers": ["Authorization", "Content-Type"],
+      "input_headers": ["Authorization", "Content-Type", "X-Trace-Id", "X-Request-Id"],
       "extra_config": {
+        "github.com/devopsfaith/krakend-jose/validator": {
+          "alg": "RS256",
+          "jwk_url": "http://keycloak:8080/realms/can-bank-x/protocol/openid-connect/certs",
+          "issuer": "http://keycloak:8080/realms/can-bank-x",
+          "audience": ["can-bank-x-api"],
+          "disable_jwk_security": true,
+          "propagate_claims": [["sub", "X-User-Sub"]]
+        },
         "qos/ratelimit/router": {
           "max_rate": 5,
           "capacity": 10
@@ -61,14 +84,15 @@
     },
     {
       "endpoint": "/api/v1/customers/{path:.*}",
-      "input_headers": ["Authorization", "Content-Type"],
+      "input_headers": ["Authorization", "Content-Type", "X-Trace-Id", "X-Request-Id"],
       "extra_config": {
         "github.com/devopsfaith/krakend-jose/validator": {
           "alg": "RS256",
           "jwk_url": "http://keycloak:8080/realms/can-bank-x/protocol/openid-connect/certs",
           "issuer": "http://keycloak:8080/realms/can-bank-x",
           "audience": ["can-bank-x-api"],
-          "disable_jwk_security": true
+          "disable_jwk_security": true,
+          "propagate_claims": [["sub", "X-User-Sub"]]
         }
       },
       "backend": [
@@ -80,14 +104,19 @@
     },
     {
       "endpoint": "/api/v1/kyc/{path:.*}",
-      "input_headers": ["Authorization", "Content-Type"],
+      "input_headers": ["Authorization", "Content-Type", "X-Trace-Id", "X-Request-Id"],
       "extra_config": {
         "github.com/devopsfaith/krakend-jose/validator": {
           "alg": "RS256",
           "jwk_url": "http://keycloak:8080/realms/can-bank-x/protocol/openid-connect/certs",
           "issuer": "http://keycloak:8080/realms/can-bank-x",
           "audience": ["can-bank-x-api"],
-          "disable_jwk_security": true
+          "disable_jwk_security": true,
+          "propagate_claims": [["sub", "X-User-Sub"]]
+        },
+        "qos/ratelimit/router": {
+          "max_rate": 10,
+          "capacity": 20
         }
       },
       "backend": [
@@ -106,12 +135,13 @@
           "jwk_url": "http://keycloak:8080/realms/can-bank-x/protocol/openid-connect/certs",
           "issuer": "http://keycloak:8080/realms/can-bank-x",
           "audience": ["can-bank-x-api"],
-          "disable_jwk_security": true
+          "disable_jwk_security": true,
+          "propagate_claims": [["sub", "X-User-Sub"]]
         }
       },
       "backend": [
         {
-          "host": ["http://account-service:8080"],
+          "host": ["http://account-service:80"],
           "url_pattern": "/api/v1/{path}"
         }
       ]
@@ -142,7 +172,8 @@
           "jwk_url": "http://keycloak:8080/realms/can-bank-x/protocol/openid-connect/certs",
           "issuer": "http://keycloak:8080/realms/can-bank-x",
           "audience": ["can-bank-x-api"],
-          "disable_jwk_security": true
+          "disable_jwk_security": true,
+          "propagate_claims": [["sub", "X-User-Sub"]]
         },
         "qos/ratelimit/router": {
           "max_rate": 20,

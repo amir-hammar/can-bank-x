@@ -39,15 +39,22 @@ services:
       - can-bank-x-network
 
   keycloak:
+<<<<<<< HEAD
     image: quay.io/keycloak/keycloak:24.0.5
     command: ["start-dev", "--http-port=8080"]
     env_file:
       - .env
+=======
+    image: quay.io/keycloak/keycloak:24.0
+    command: ["start-dev", "--http-port=8080", "--import-realm"]
+>>>>>>> fdc62a74c87bea883c40e3e18586b5f310eb5151
     environment:
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
     ports:
       - "8082:8080"
+    volumes:
+      - ./infra/keycloak/realm-can-bank-x.json:/opt/keycloak/data/import/realm-can-bank-x.json:ro
     networks:
       - can-bank-x-network
 
@@ -55,11 +62,16 @@ services:
     build:
       context: ./services/user-services
       dockerfile: Dockerfile
+<<<<<<< HEAD
     container_name: user-service
+=======
+>>>>>>> fdc62a74c87bea883c40e3e18586b5f310eb5151
     env_file:
       - .env
     environment:
       DATABASE_URL: ${USER_SERVICE_DATABASE_URL}
+    ports:
+      - "8081:8080"
     depends_on:
       postgres:
         condition: service_healthy
