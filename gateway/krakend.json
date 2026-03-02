@@ -37,7 +37,7 @@
       "input_headers": ["Authorization", "Content-Type"],
       "backend": [
         {
-          "host": ["http://user-service:80"],
+          "host": ["http://user-service:8080"],
           "url_pattern": "/api/v1/auth/{path}"
         }
       ]
@@ -54,7 +54,7 @@
       },
       "backend": [
         {
-          "host": ["http://user-service:80"],
+          "host": ["http://user-service:8080"],
           "url_pattern": "/api/v1/customers/register"
         }
       ]
@@ -73,7 +73,7 @@
       },
       "backend": [
         {
-          "host": ["http://user-service:80"],
+          "host": ["http://user-service:8080"],
           "url_pattern": "/api/v1/customers/{path}"
         }
       ]
@@ -92,7 +92,7 @@
       },
       "backend": [
         {
-          "host": ["http://user-service:80"],
+          "host": ["http://user-service:8080"],
           "url_pattern": "/api/v1/kyc/{path}"
         }
       ]
@@ -117,6 +117,23 @@
       ]
     },
     {
+      "endpoint": "/api/v1/transfers/create",
+      "method": "POST",
+      "input_headers": ["Authorization", "Content-Type"],
+      "extra_config": {
+        "qos/ratelimit/router": {
+          "max_rate": 20,
+          "capacity": 40
+        }
+      },
+      "backend": [
+        {
+          "host": ["http://transfer-service:8080"],
+          "url_pattern": "/api/v1/transfers/create"
+        }
+      ]
+    },
+    {
       "endpoint": "/api/v1/transfers/{path:.*}",
       "input_headers": ["Authorization", "Content-Type"],
       "extra_config": {
@@ -134,7 +151,7 @@
       },
       "backend": [
         {
-          "host": ["http://transfer-service:80"],
+          "host": ["http://transfer-service:8080"],
           "url_pattern": "/api/v1/transfers/{path}"
         }
       ]

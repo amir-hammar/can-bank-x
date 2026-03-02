@@ -1,0 +1,129 @@
+name: canbankx-ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.83.0
+          components: rustfmt, clippy
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            services/user-services
+            services/account
+            services/transfer
+
+      - name: cargo fmt --check
+        run: |
+          cargo fmt --manifest-path services/user-services/Cargo.toml -- --check
+          cargo fmt --manifest-path services/account/Cargo.toml -- --check
+          cargo fmt --manifest-path services/transfer/Cargo.toml -- --check
+
+      - name: cargo clippy -D warnings
+        run: |
+          cargo clippy --manifest-path services/user-services/Cargo.toml -- -D warnings
+          cargo clippy --manifest-path services/account/Cargo.toml -- -D warnings
+          cargo clippy --manifest-path services/transfer/Cargo.toml -- -D warnings
+
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    needs: [lint]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust (pinned)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.83.0
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            services/user-services
+            services/account
+            services/transfer
+
+      - name: Build Rust projects
+        run: |
+          cargo build --release --manifest-path services/user-services/Cargo.toml
+          cargo build --release --manifest-path services/account/Cargo.toml
+          cargo build --release --manifest-path services/transfer/Cargo.toml
+
+      - name: Build Docker images
+        run: |
+          cp .env.example .env
+          docker network create can-bank-x-network || true
+          docker compose build
+
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust (pinned)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.83.0
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            services/user-services
+            services/account
+            services/transfer
+
+      - name: Unit tests
+        run: |
+          cargo test --manifest-path services/user-services/Cargo.toml
+          cargo test --manifest-path services/account/Cargo.toml
+          cargo test --manifest-path services/transfer/Cargo.toml
+
+      - name: Start stack for integration + E2E
+        run: |
+          cp .env.example .env
+          docker network create can-bank-x-network || true
+          docker compose up -d --build postgres keycloak user-service account-service transfer-service api-gateway seed
+
+      - name: Wait for seed completion
+        run: docker compose wait seed
+
+      - name: Integration tests
+        run: sh tests/integration-tests.sh
+
+      - name: E2E tests through gateway
+        run: sh tests/e2e-tests.sh
+
+      - name: Collect logs
+        if: always()
+        run: |
+          mkdir -p artifacts
+          docker compose logs > artifacts/compose.log || true
+
+      - name: Upload test logs artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-test-logs
+          path: artifacts/
+
+      - name: Tear down stack
+        if: always()
+        run: docker compose down -v
