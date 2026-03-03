@@ -73,7 +73,9 @@ jobs:
         run: |
           cp .env.example .env
           docker network create can-bank-x-network || true
-          docker compose build
+          docker compose build user-service api-gateway
+          # Next iteration:
+          # docker compose build account-service transfer-service
 
   test:
     runs-on: ubuntu-24.04
