@@ -84,7 +84,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Rust (pinned)
+      - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: 1.89.0
@@ -110,6 +110,19 @@ jobs:
           cp .env.example .env
           docker network create can-bank-x-network || true
           docker compose up -d --build --no-deps postgres keycloak
+
+      - name: Wait for postgres readiness
+        run: |
+          for i in $(seq 1 60); do
+            if docker compose exec -T postgres pg_isready -U "${POSTGRES_USER}" -d postgres >/dev/null 2>&1; then
+              echo "Postgres is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Postgres did not become ready in time"
+          docker compose logs postgres || true
+          exit 1
 
       - name: Run seed migrations
         run: docker compose run --rm --no-deps seed

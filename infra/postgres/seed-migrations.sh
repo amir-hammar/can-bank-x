@@ -8,6 +8,22 @@ fi
 
 export PGPASSWORD="${POSTGRES_PASSWORD}"
 
+wait_for_postgres() {
+  echo "Waiting for postgres readiness..."
+  retries=60
+  while [ "$retries" -gt 0 ]; do
+    if pg_isready -h postgres -U "${POSTGRES_USER}" -d postgres >/dev/null 2>&1; then
+      echo "Postgres is ready."
+      return 0
+    fi
+    retries=$((retries - 1))
+    sleep 2
+  done
+
+  echo "Postgres did not become ready in time"
+  exit 1
+}
+
 ensure_db() {
   db="$1"
   exists=$(psql -h postgres -U "${POSTGRES_USER}" -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='${db}'")
@@ -24,6 +40,8 @@ run_sql() {
   echo "Applying ${file} to ${db}"
   psql -v ON_ERROR_STOP=1 -h postgres -U "${POSTGRES_USER}" -d "${db}" -f "${file}"
 }
+
+wait_for_postgres
 
 run_sql "canbankx_user" "/seed/services/user/migrations/2026030201_init.sql"
 run_sql "canbankx_account" "/seed/services/account/migrations/2026030201_init.sql"
