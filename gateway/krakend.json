@@ -49,11 +49,7 @@
       "backend": [
         {
           "host": ["http://user-service:8080"],
-<<<<<<< HEAD
-          "url_pattern": "/api/v1/auth/{path}"
-=======
           "url_pattern": "/api/v1/auth/me"
->>>>>>> fdc62a74c87bea883c40e3e18586b5f310eb5151
         }
       ]
     },
