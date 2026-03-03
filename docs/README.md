@@ -1,5 +1,7 @@
 # can-bank-x
 
+[![CI](https://github.com/amir-hammar/can-bank-x/actions/workflows/ci.yml/badge.svg)](https://github.com/amir-hammar/can-bank-x/actions/workflows/ci.yml)
+
 ## Local Architecture
 
 - Deployment target: local machine only
@@ -101,12 +103,12 @@ Databases are created automatically by:
 - `infra/postgres/init-multiple-dbs.sh`
 
 Schema migration files:
-- user: `services/user-services/migrations/2026030201_init.sql`
+- user: `services/user/migrations/2026030201_init.sql`
 - account: `services/account/migrations/2026030201_init.sql`
 - transfer: `services/transfer/migrations/2026030201_init.sql`
 
 Manual migration execution (via Postgres container):
-- `docker exec -i postgres psql -U $POSTGRES_USER -d canbankx_user < services/user-services/migrations/2026030201_init.sql`
+- `docker exec -i postgres psql -U $POSTGRES_USER -d canbankx_user < services/user/migrations/2026030201_init.sql`
 - `docker exec -i postgres psql -U $POSTGRES_USER -d canbankx_account < services/account/migrations/2026030201_init.sql`
 - `docker exec -i postgres psql -U $POSTGRES_USER -d canbankx_transfer < services/transfer/migrations/2026030201_init.sql`
 
@@ -128,9 +130,9 @@ Flow:
    - `docker compose build`
 3. tests
    - unit (`cargo test`)
-   - integration (`tests/integration-tests.sh`)
-   - E2E through gateway (`tests/e2e-tests.sh`)
-   - DB constraint assertions (`tests/run-db-constraint-tests.sh`)
+  - integration (`infra/tests/integration-tests.sh`)
+  - E2E through gateway (`infra/tests/e2e-tests.sh`)
+  - DB constraint assertions (`infra/tests/run-db-constraint-tests.sh`)
 4. artifacts
    - uploads `artifacts/` logs
 
@@ -150,13 +152,13 @@ Single Postgres instance with dedicated DB per service:
 
 Migration files:
 
-- `services/user-services/migrations/2026030201_init.sql`
+- `services/user/migrations/2026030201_init.sql`
 - `services/account/migrations/2026030201_init.sql`
 - `services/transfer/migrations/2026030201_init.sql`
 
 Apply migrations manually:
 
-- `docker exec -i postgres psql -U canbankx_me_user -d canbankx_user < services/user-services/migrations/2026030201_init.sql`
+- `docker exec -i postgres psql -U canbankx_me_user -d canbankx_user < services/user/migrations/2026030201_init.sql`
 - `docker exec -i postgres psql -U canbankx_me_user -d canbankx_account < services/account/migrations/2026030201_init.sql`
 - `docker exec -i postgres psql -U canbankx_me_user -d canbankx_transfer < services/transfer/migrations/2026030201_init.sql`
 
@@ -183,26 +185,26 @@ Error responses follow:
 ## API artifacts
 
 - OpenAPI: `docs/openapi-user-service.yaml`
-- Postman collection: `docs/postman/can-bank-x.postman_collection.json`
-- Postman local env: `docs/postman/can-bank-x.local.postman_environment.json`
+- Postman collection: `docs/collections/can-bank-x.postman_collection.json`
+- Postman local env: `docs/collections/can-bank-x.local.postman_environment.json`
 
 ## SQL assertion tests
 
-- Runner: `tests/run-db-constraint-tests.sh`
+- Runner: `infra/tests/run-db-constraint-tests.sh`
 - Assertions:
-  - `tests/sql/user_constraints.sql`
-  - `tests/sql/account_constraints.sql`
-  - `tests/sql/transfer_constraints.sql`
+  - `infra/tests/sql/user_constraints.sql`
+  - `infra/tests/sql/account_constraints.sql`
+  - `infra/tests/sql/transfer_constraints.sql`
 
 Run all:
 
 Run all DB constraint checks:
-- `sh tests/run-db-constraint-tests.sh`
+- `sh infra/tests/run-db-constraint-tests.sh`
 
 Assertion files:
-- `tests/sql/user_constraints.sql`
-- `tests/sql/account_constraints.sql`
-- `tests/sql/transfer_constraints.sql`
+- `infra/tests/sql/user_constraints.sql`
+- `infra/tests/sql/account_constraints.sql`
+- `infra/tests/sql/transfer_constraints.sql`
 
 Checks covered:
 - duplicate user email/sub rejected

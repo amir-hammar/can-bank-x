@@ -10,4 +10,4 @@ for service in user-service account-service transfer-service; do
 done
 
 echo "Running DB constraint assertions..." | tee -a artifacts/integration.log
-sh tests/run-db-constraint-tests.sh >> artifacts/integration.log
+sh infra/tests/run-db-constraint-tests.sh >> artifacts/integration.log
