@@ -1,0 +1,156 @@
+name: canbankx-ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.89.0
+          components: rustfmt, clippy
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            services/user
+            # Next iteration:
+            # services/account
+            # services/transfer
+
+      - name: cargo fmt --check
+        run: |
+          cargo fmt --manifest-path services/user/Cargo.toml -- --check
+          # Next iteration:
+          # cargo fmt --manifest-path services/account/Cargo.toml -- --check
+          # cargo fmt --manifest-path services/transfer/Cargo.toml -- --check
+
+      - name: cargo clippy -D warnings
+        run: |
+          cargo clippy --manifest-path services/user/Cargo.toml -- -D warnings
+          # Next iteration:
+          # cargo clippy --manifest-path services/account/Cargo.toml -- -D warnings
+          # cargo clippy --manifest-path services/transfer/Cargo.toml -- -D warnings
+
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    needs: [lint]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust (pinned)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.89.0
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            services/user
+            # Next iteration:
+            # services/account
+            # services/transfer
+
+      - name: Build Rust projects
+        run: |
+          cargo build --release --manifest-path services/user/Cargo.toml
+          # Next iteration:
+          # cargo build --release --manifest-path services/account/Cargo.toml
+          # cargo build --release --manifest-path services/transfer/Cargo.toml
+
+      - name: Build Docker images
+        run: |
+          cp .env.example .env
+          docker network create can-bank-x-network || true
+          docker compose build user-service api-gateway
+          # Next iteration:
+          # docker compose build account-service transfer-service
+
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.89.0
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            services/user
+            # Next iteration:
+            # services/account
+            # services/transfer
+
+      - name: Unit tests
+        run: |
+          cargo test --manifest-path services/user/Cargo.toml
+          # Next iteration:
+          # cargo test --manifest-path services/account/Cargo.toml
+          # cargo test --manifest-path services/transfer/Cargo.toml
+
+      - name: Start infra services
+        run: |
+          cp .env.example .env
+          docker network create can-bank-x-network || true
+          docker compose up -d --build --no-deps postgres keycloak
+
+      - name: Wait for postgres readiness
+        run: |
+          for i in $(seq 1 60); do
+            if docker compose exec -T postgres pg_isready -U "${POSTGRES_USER}" -d postgres >/dev/null 2>&1; then
+              echo "Postgres is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Postgres did not become ready in time"
+          docker compose logs postgres || true
+          exit 1
+
+      - name: Run seed migrations
+        run: docker compose run --rm --no-deps seed
+
+      - name: Start app services
+        run: |
+          docker compose up -d --build --no-deps user-service api-gateway
+          # Next iteration: include account-service transfer-service
+
+      - name: Integration tests
+        run: sh infra/tests/integration-tests.sh
+
+      - name: E2E tests through gateway
+        run: sh infra/tests/e2e-tests.sh
+
+      - name: Collect logs
+        if: always()
+        run: |
+          mkdir -p artifacts
+          docker compose logs > artifacts/compose.log || true
+
+      - name: Upload test logs artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-test-logs
+          path: artifacts/
+
+      - name: Tear down stack
+        if: always()
+        run: docker compose down -v
