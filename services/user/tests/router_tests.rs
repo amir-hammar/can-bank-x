@@ -48,10 +48,18 @@ async fn customers_me_without_sub_returns_standard_unauthorized_error() {
 
     assert_eq!(response.status(), axum::http::StatusCode::UNAUTHORIZED);
 
-    let body = response.into_body().collect().await.expect("collect body").to_bytes();
+    let body = response
+        .into_body()
+        .collect()
+        .await
+        .expect("collect body")
+        .to_bytes();
     let json: Value = serde_json::from_slice(&body).expect("json body");
 
-    assert_eq!(json.get("code").and_then(Value::as_str), Some("UNAUTHORIZED"));
+    assert_eq!(
+        json.get("code").and_then(Value::as_str),
+        Some("UNAUTHORIZED")
+    );
     assert!(json.get("traceId").and_then(Value::as_str).is_some());
     assert!(json.get("details").and_then(Value::as_array).is_some());
 }

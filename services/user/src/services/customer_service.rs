@@ -28,17 +28,15 @@ pub async fn register_customer(
         .await
         .map_err(|_| ServiceError::internal("Could not start transaction"))?;
 
-    let customer_with_profile = customer_repository::insert_customer_with_profile(
-        &mut tx,
-        keycloak_sub,
-        &normalized,
-    )
-    .await
-    .map_err(map_sqlx_insert_error)?;
+    let customer_with_profile =
+        customer_repository::insert_customer_with_profile(&mut tx, keycloak_sub, &normalized)
+            .await
+            .map_err(map_sqlx_insert_error)?;
 
-    let kyc_case = kyc_repository::get_or_create_pending_kyc(&mut tx, &customer_with_profile.customer.id)
-        .await
-        .map_err(|_| ServiceError::internal("Failed to initialize KYC case"))?;
+    let kyc_case =
+        kyc_repository::get_or_create_pending_kyc(&mut tx, &customer_with_profile.customer.id)
+            .await
+            .map_err(|_| ServiceError::internal("Failed to initialize KYC case"))?;
 
     audit_repository::record_event(
         &mut tx,

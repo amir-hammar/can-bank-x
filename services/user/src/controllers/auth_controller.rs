@@ -26,7 +26,8 @@ pub async fn me(State(state): State<AppState>, headers: HeaderMap) -> impl IntoR
 }
 
 fn map_error(error: ServiceError, trace_id: &str) -> axum::response::Response {
-    let status = StatusCode::from_u16(error.status_code).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+    let status =
+        StatusCode::from_u16(error.status_code).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
     (
         status,
         Json(ErrorResponse::new(

@@ -52,11 +52,7 @@ pub fn normalize_register_request(payload: &RegisterRequest) -> RegisterRequest 
         street: payload.street.trim().to_string(),
         city: payload.city.trim().to_string(),
         province: payload.province.trim().to_uppercase(),
-        postal_code: payload
-            .postal_code
-            .trim()
-            .to_uppercase()
-            .replace('-', " "),
+        postal_code: payload.postal_code.trim().to_uppercase().replace('-', " "),
         country: payload.country.trim().to_string(),
         nas: payload.nas.trim().to_string(),
     }

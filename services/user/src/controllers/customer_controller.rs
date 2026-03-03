@@ -25,7 +25,8 @@ pub async fn register(
         Err(error) => return map_error(error, &trace_id),
     };
 
-    match customer_service::register_customer(&state.pool, &keycloak_sub, payload, &trace_id).await {
+    match customer_service::register_customer(&state.pool, &keycloak_sub, payload, &trace_id).await
+    {
         Ok(response) => (StatusCode::CREATED, Json(response)).into_response(),
         Err(error) => map_error(error, &trace_id),
     }
@@ -46,7 +47,8 @@ pub async fn me(State(state): State<AppState>, headers: HeaderMap) -> impl IntoR
 }
 
 fn map_error(error: ServiceError, trace_id: &str) -> axum::response::Response {
-    let status = StatusCode::from_u16(error.status_code).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+    let status =
+        StatusCode::from_u16(error.status_code).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
     (
         status,
         Json(ErrorResponse::new(

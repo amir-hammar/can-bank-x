@@ -1,8 +1,7 @@
 use sqlx::{Pool, Postgres};
 
 use crate::{
-    models::dto::auth_dto::AuthMeResponse,
-    repositories::customer_repository,
+    models::dto::auth_dto::AuthMeResponse, repositories::customer_repository,
     services::ServiceError,
 };
 
