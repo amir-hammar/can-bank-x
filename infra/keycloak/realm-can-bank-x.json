@@ -43,9 +43,7 @@
           "temporary": false
         }
       ],
-      "requiredActions": [
-        "CONFIGURE_TOTP"
-      ]
+      "requiredActions": []
     }
   ]
 }

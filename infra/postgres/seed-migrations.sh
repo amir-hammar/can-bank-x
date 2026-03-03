@@ -8,9 +8,19 @@ fi
 
 export PGPASSWORD="${POSTGRES_PASSWORD}"
 
+ensure_db() {
+  db="$1"
+  exists=$(psql -h postgres -U "${POSTGRES_USER}" -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='${db}'")
+  if [ "${exists}" != "1" ]; then
+    echo "Creating missing database ${db}"
+    psql -v ON_ERROR_STOP=1 -h postgres -U "${POSTGRES_USER}" -d postgres -c "CREATE DATABASE ${db};"
+  fi
+}
+
 run_sql() {
   db="$1"
   file="$2"
+  ensure_db "${db}"
   echo "Applying ${file} to ${db}"
   psql -v ON_ERROR_STOP=1 -h postgres -U "${POSTGRES_USER}" -d "${db}" -f "${file}"
 }

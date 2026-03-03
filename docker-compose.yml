@@ -130,7 +130,7 @@ services:
       keycloak:
         condition: service_started
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/__health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
       interval: 10s
       timeout: 3s
       retries: 10

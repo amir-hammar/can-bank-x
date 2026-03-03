@@ -1,4 +1,4 @@
-# can-bank-x
+# CanBankX
 
 [![CI](https://github.com/amir-hammar/can-bank-x/actions/workflows/ci.yml/badge.svg)](https://github.com/amir-hammar/can-bank-x/actions/workflows/ci.yml)
 

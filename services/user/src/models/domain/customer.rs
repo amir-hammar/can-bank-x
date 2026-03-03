@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use chrono::NaiveDateTime;
 use sqlx::FromRow;
 
 #[derive(Debug, Clone, FromRow)]
@@ -7,8 +7,8 @@ pub struct Customer {
     pub keycloak_sub: String,
     pub email: String,
     pub status: String,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
 }
 
 #[derive(Debug, Clone, FromRow)]
@@ -21,7 +21,7 @@ pub struct CustomerProfile {
     pub postal_code: String,
     pub country: String,
     pub nas: String,
-    pub created_at: DateTime<Utc>,
+    pub created_at: NaiveDateTime,
 }
 
 #[derive(Debug, Clone)]
