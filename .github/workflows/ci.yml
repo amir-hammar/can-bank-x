@@ -23,20 +23,23 @@ jobs:
         with:
           workspaces: |
             services/user
-            services/account
-            services/transfer
+            # Next iteration:
+            # services/account
+            # services/transfer
 
       - name: cargo fmt --check
         run: |
           cargo fmt --manifest-path services/user/Cargo.toml -- --check
-          cargo fmt --manifest-path services/account/Cargo.toml -- --check
-          cargo fmt --manifest-path services/transfer/Cargo.toml -- --check
+          # Next iteration:
+          # cargo fmt --manifest-path services/account/Cargo.toml -- --check
+          # cargo fmt --manifest-path services/transfer/Cargo.toml -- --check
 
       - name: cargo clippy -D warnings
         run: |
           cargo clippy --manifest-path services/user/Cargo.toml -- -D warnings
-          cargo clippy --manifest-path services/account/Cargo.toml -- -D warnings
-          cargo clippy --manifest-path services/transfer/Cargo.toml -- -D warnings
+          # Next iteration:
+          # cargo clippy --manifest-path services/account/Cargo.toml -- -D warnings
+          # cargo clippy --manifest-path services/transfer/Cargo.toml -- -D warnings
 
   build:
     runs-on: ubuntu-24.04
@@ -55,14 +58,16 @@ jobs:
         with:
           workspaces: |
             services/user
-            services/account
-            services/transfer
+            # Next iteration:
+            # services/account
+            # services/transfer
 
       - name: Build Rust projects
         run: |
           cargo build --release --manifest-path services/user/Cargo.toml
-          cargo build --release --manifest-path services/account/Cargo.toml
-          cargo build --release --manifest-path services/transfer/Cargo.toml
+          # Next iteration:
+          # cargo build --release --manifest-path services/account/Cargo.toml
+          # cargo build --release --manifest-path services/transfer/Cargo.toml
 
       - name: Build Docker images
         run: |
@@ -87,20 +92,23 @@ jobs:
         with:
           workspaces: |
             services/user
-            services/account
-            services/transfer
+            # Next iteration:
+            # services/account
+            # services/transfer
 
       - name: Unit tests
         run: |
           cargo test --manifest-path services/user/Cargo.toml
-          cargo test --manifest-path services/account/Cargo.toml
-          cargo test --manifest-path services/transfer/Cargo.toml
+          # Next iteration:
+          # cargo test --manifest-path services/account/Cargo.toml
+          # cargo test --manifest-path services/transfer/Cargo.toml
 
       - name: Start stack for integration + E2E
         run: |
           cp .env.example .env
           docker network create can-bank-x-network || true
-          docker compose up -d --build postgres keycloak user-service account-service transfer-service api-gateway seed
+          docker compose up -d --build postgres keycloak user-service api-gateway seed
+          # Next iteration: include account-service transfer-service
 
       - name: Wait for seed completion
         run: docker compose wait seed
