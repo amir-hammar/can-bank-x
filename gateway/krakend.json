@@ -79,7 +79,7 @@
       ]
     },
     {
-      "endpoint": "/api/v1/customers/{path:.*}",
+      "endpoint": "/api/v1/customers/{path}",
       "input_headers": ["Authorization", "Content-Type", "X-Trace-Id", "X-Request-Id"],
       "extra_config": {
         "github.com/devopsfaith/krakend-jose/validator": {
@@ -99,7 +99,7 @@
       ]
     },
     {
-      "endpoint": "/api/v1/kyc/{path:.*}",
+      "endpoint": "/api/v1/kyc/{path}",
       "input_headers": ["Authorization", "Content-Type", "X-Trace-Id", "X-Request-Id"],
       "extra_config": {
         "github.com/devopsfaith/krakend-jose/validator": {
@@ -123,7 +123,7 @@
       ]
     },
     {
-      "endpoint": "/api/v1/accounts/{path:.*}",
+      "endpoint": "/api/v1/accounts/{path}",
       "input_headers": ["Authorization", "Content-Type"],
       "extra_config": {
         "github.com/devopsfaith/krakend-jose/validator": {
@@ -160,7 +160,7 @@
       ]
     },
     {
-      "endpoint": "/api/v1/transfers/{path:.*}",
+      "endpoint": "/api/v1/transfers/{path}",
       "input_headers": ["Authorization", "Content-Type"],
       "extra_config": {
         "github.com/devopsfaith/krakend-jose/validator": {
