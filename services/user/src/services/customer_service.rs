@@ -40,26 +40,30 @@ pub async fn register_customer(
 
     audit_repository::record_event(
         &mut tx,
-        "CUSTOMER",
-        keycloak_sub,
-        "CUSTOMER_REGISTERED",
-        "CUSTOMER",
-        &customer_with_profile.customer.id,
-        None,
-        trace_id,
+        audit_repository::AuditEvent {
+            actor_type: "CUSTOMER",
+            actor_id: keycloak_sub,
+            action: "CUSTOMER_REGISTERED",
+            entity_type: "CUSTOMER",
+            entity_id: &customer_with_profile.customer.id,
+            metadata: None,
+            trace_id,
+        },
     )
     .await
     .map_err(|_| ServiceError::internal("Failed to record audit event"))?;
 
     audit_repository::record_event(
         &mut tx,
-        "CUSTOMER",
-        keycloak_sub,
-        "KYC_SUBMITTED",
-        "KYC_CASE",
-        &kyc_case.id,
-        None,
-        trace_id,
+        audit_repository::AuditEvent {
+            actor_type: "CUSTOMER",
+            actor_id: keycloak_sub,
+            action: "KYC_SUBMITTED",
+            entity_type: "KYC_CASE",
+            entity_id: &kyc_case.id,
+            metadata: None,
+            trace_id,
+        },
     )
     .await
     .map_err(|_| ServiceError::internal("Failed to record audit event"))?;

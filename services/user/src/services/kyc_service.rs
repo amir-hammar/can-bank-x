@@ -30,13 +30,15 @@ pub async fn submit_kyc(
 
     audit_repository::record_event(
         &mut tx,
-        "CUSTOMER",
-        keycloak_sub,
-        "KYC_SUBMITTED",
-        "KYC_CASE",
-        &case.id,
-        None,
-        trace_id,
+        audit_repository::AuditEvent {
+            actor_type: "CUSTOMER",
+            actor_id: keycloak_sub,
+            action: "KYC_SUBMITTED",
+            entity_type: "KYC_CASE",
+            entity_id: &case.id,
+            metadata: None,
+            trace_id,
+        },
     )
     .await
     .map_err(|_| ServiceError::internal("Failed to record audit event"))?;
@@ -83,13 +85,15 @@ pub async fn confirm_kyc(
 
     audit_repository::record_event(
         &mut tx,
-        "SYSTEM",
-        "kyc-review",
-        "KYC_CONFIRMED",
-        "KYC_CASE",
-        &case.id,
-        Some(serde_json::json!({ "approved": approved })),
-        trace_id,
+        audit_repository::AuditEvent {
+            actor_type: "SYSTEM",
+            actor_id: "kyc-review",
+            action: "KYC_CONFIRMED",
+            entity_type: "KYC_CASE",
+            entity_id: &case.id,
+            metadata: Some(serde_json::json!({ "approved": approved })),
+            trace_id,
+        },
     )
     .await
     .map_err(|_| ServiceError::internal("Failed to record audit event"))?;
