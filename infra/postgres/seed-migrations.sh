@@ -15,7 +15,7 @@ run_sql() {
   psql -v ON_ERROR_STOP=1 -h postgres -U "${POSTGRES_USER}" -d "${db}" -f "${file}"
 }
 
-run_sql "canbankx_user" "/seed/services/user-services/migrations/2026030201_init.sql"
+run_sql "canbankx_user" "/seed/services/user/migrations/2026030201_init.sql"
 run_sql "canbankx_account" "/seed/services/account/migrations/2026030201_init.sql"
 run_sql "canbankx_transfer" "/seed/services/transfer/migrations/2026030201_init.sql"
 

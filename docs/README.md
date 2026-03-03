@@ -1,8 +1,5 @@
 # can-bank-x
 
-<<<<<<< HEAD
-![CI](https://github.com/amir-hammar/can-bank-x/actions/workflows/ci.yml/badge.svg)
-
 ## Local Architecture
 
 - Deployment target: local machine only
@@ -57,7 +54,6 @@ Optional target:
 
 Example:
 - `sh deploy/rollback.sh HEAD~1`
-=======
 ## Network
 
 All services share external Docker network `can-bank-x-network`.
@@ -87,11 +83,9 @@ Gateway config: `gateway/krakend.json`
   - Client: `can-bank-x-api`
   - User: `demo.customer` / `Passw0rd!`
   - Required action: TOTP (`CONFIGURE_TOTP`)
->>>>>>> fdc62a74c87bea883c40e3e18586b5f310eb5151
 
 ## Database and migrations
 
-<<<<<<< HEAD
 Environment variables are loaded from `.env` (keep secret) and template is in `.env.example`:
 - `POSTGRES_USER`
 - `POSTGRES_PASSWORD`
@@ -148,7 +142,6 @@ Determinism/speed controls:
 - each job has a 10-minute timeout
 
 ## SQL Assertion Tests
-=======
 Single Postgres instance with dedicated DB per service:
 
 - `canbankx_user`
@@ -202,12 +195,10 @@ Error responses follow:
   - `tests/sql/transfer_constraints.sql`
 
 Run all:
->>>>>>> fdc62a74c87bea883c40e3e18586b5f310eb5151
 
 Run all DB constraint checks:
 - `sh tests/run-db-constraint-tests.sh`
 
-<<<<<<< HEAD
 Assertion files:
 - `tests/sql/user_constraints.sql`
 - `tests/sql/account_constraints.sql`
@@ -234,8 +225,6 @@ Metrics endpoint exposed by each service:
 
 Health endpoint exposed by each service:
 - `GET /health`
-=======
 ## Run stack
 
 - `docker compose up --build`
->>>>>>> fdc62a74c87bea883c40e3e18586b5f310eb5151

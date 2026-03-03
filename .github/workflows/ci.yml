@@ -22,19 +22,19 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: |
-            services/user-services
+            services/user
             services/account
             services/transfer
 
       - name: cargo fmt --check
         run: |
-          cargo fmt --manifest-path services/user-services/Cargo.toml -- --check
+          cargo fmt --manifest-path services/user/Cargo.toml -- --check
           cargo fmt --manifest-path services/account/Cargo.toml -- --check
           cargo fmt --manifest-path services/transfer/Cargo.toml -- --check
 
       - name: cargo clippy -D warnings
         run: |
-          cargo clippy --manifest-path services/user-services/Cargo.toml -- -D warnings
+          cargo clippy --manifest-path services/user/Cargo.toml -- -D warnings
           cargo clippy --manifest-path services/account/Cargo.toml -- -D warnings
           cargo clippy --manifest-path services/transfer/Cargo.toml -- -D warnings
 
@@ -54,13 +54,13 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: |
-            services/user-services
+            services/user
             services/account
             services/transfer
 
       - name: Build Rust projects
         run: |
-          cargo build --release --manifest-path services/user-services/Cargo.toml
+          cargo build --release --manifest-path services/user/Cargo.toml
           cargo build --release --manifest-path services/account/Cargo.toml
           cargo build --release --manifest-path services/transfer/Cargo.toml
 
@@ -86,13 +86,13 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: |
-            services/user-services
+            services/user
             services/account
             services/transfer
 
       - name: Unit tests
         run: |
-          cargo test --manifest-path services/user-services/Cargo.toml
+          cargo test --manifest-path services/user/Cargo.toml
           cargo test --manifest-path services/account/Cargo.toml
           cargo test --manifest-path services/transfer/Cargo.toml
 
@@ -106,10 +106,10 @@ jobs:
         run: docker compose wait seed
 
       - name: Integration tests
-        run: sh tests/integration-tests.sh
+        run: sh infra/tests/integration-tests.sh
 
       - name: E2E tests through gateway
-        run: sh tests/e2e-tests.sh
+        run: sh infra/tests/e2e-tests.sh
 
       - name: Collect logs
         if: always()
