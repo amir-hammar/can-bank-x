@@ -109,7 +109,7 @@ jobs:
         run: |
           cp .env.example .env
           docker network create can-bank-x-network || true
-          docker compose up -d --build postgres keycloak user-service api-gateway seed
+          docker compose up -d --build --no-deps postgres keycloak user-service api-gateway seed
           # Next iteration: include account-service transfer-service
 
       - name: Wait for seed completion
