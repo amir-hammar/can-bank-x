@@ -3,89 +3,343 @@
     "name": "can-bank-x API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
+  "variable": [
+    {
+      "key": "keycloak_base",
+      "value": "http://localhost:8082",
+      "type": "string"
+    },
+    {
+      "key": "gateway_base",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "realm",
+      "value": "can-bank-x",
+      "type": "string"
+    },
+    {
+      "key": "client_id",
+      "value": "can-bank-x-api",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refresh_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
   "item": [
     {
-      "name": "Auth Me",
-      "request": {
-        "method": "GET",
-        "header": [
-          { "key": "Authorization", "value": "Bearer {{access_token}}" },
-          { "key": "X-Trace-Id", "value": "{{$guid}}" }
-        ],
-        "url": "{{gateway_base}}/api/v1/auth/me"
-      }
-    },
-    {
-      "name": "Register Customer",
-      "request": {
-        "method": "POST",
-        "header": [
-          { "key": "Authorization", "value": "Bearer {{access_token}}" },
-          { "key": "Content-Type", "value": "application/json" },
-          { "key": "X-Trace-Id", "value": "{{$guid}}" }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"email\": \"demo.customer@example.com\",\n  \"full_name\": \"Demo Customer\",\n  \"street\": \"123 Main St\",\n  \"city\": \"Montreal\",\n  \"province\": \"QC\",\n  \"postal_code\": \"H2X1Z5\",\n  \"country\": \"Canada\",\n  \"nas\": \"123456789\"\n}"
+      "name": "Keycloak",
+      "item": [
+        {
+          "name": "OIDC Configuration",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{keycloak_base}}/realms/{{realm}}/.well-known/openid-configuration"
+          }
         },
-        "url": "{{gateway_base}}/api/v1/customers/register"
-      }
-    },
-    {
-      "name": "Customer Me",
-      "request": {
-        "method": "GET",
-        "header": [
-          { "key": "Authorization", "value": "Bearer {{access_token}}" },
-          { "key": "X-Trace-Id", "value": "{{$guid}}" }
-        ],
-        "url": "{{gateway_base}}/api/v1/customers/me"
-      }
-    },
-    {
-      "name": "KYC Submit",
-      "request": {
-        "method": "POST",
-        "header": [
-          { "key": "Authorization", "value": "Bearer {{access_token}}" },
-          { "key": "X-Trace-Id", "value": "{{$guid}}" }
-        ],
-        "url": "{{gateway_base}}/api/v1/kyc/submit"
-      }
-    },
-    {
-      "name": "KYC Confirm",
-      "request": {
-        "method": "POST",
-        "header": [
-          { "key": "Authorization", "value": "Bearer {{access_token}}" },
-          { "key": "Content-Type", "value": "application/json" },
-          { "key": "X-Trace-Id", "value": "{{$guid}}" }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"approved\": true\n}"
+        {
+          "name": "Get Token (Password Grant)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.environment.set('access_token', jsonData.access_token);",
+                  "  pm.environment.set('refresh_token', jsonData.refresh_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "client_id",
+                  "value": "{{client_id}}"
+                },
+                {
+                  "key": "username",
+                  "value": "demo.customer"
+                },
+                {
+                  "key": "password",
+                  "value": "Passw0rd!"
+                },
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "scope",
+                  "value": "openid profile email"
+                }
+              ]
+            },
+            "url": "{{keycloak_base}}/realms/{{realm}}/protocol/openid-connect/token"
+          }
         },
-        "url": "{{gateway_base}}/api/v1/kyc/confirm"
-      }
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.environment.set('access_token', jsonData.access_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "client_id",
+                  "value": "{{client_id}}"
+                },
+                {
+                  "key": "grant_type",
+                  "value": "refresh_token"
+                },
+                {
+                  "key": "refresh_token",
+                  "value": "{{refresh_token}}"
+                }
+              ]
+            },
+            "url": "{{keycloak_base}}/realms/{{realm}}/protocol/openid-connect/token"
+          }
+        },
+        {
+          "name": "User Info",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{keycloak_base}}/realms/{{realm}}/protocol/openid-connect/userinfo"
+          }
+        },
+        {
+          "name": "Token Introspection",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "client_id",
+                  "value": "{{client_id}}"
+                },
+                {
+                  "key": "token",
+                  "value": "{{access_token}}"
+                }
+              ]
+            },
+            "url": "{{keycloak_base}}/realms/{{realm}}/protocol/openid-connect/token/introspect"
+          }
+        },
+        {
+          "name": "Authorize (Code Flow)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{keycloak_base}}/realms/{{realm}}/protocol/openid-connect/auth?client_id={{client_id}}&redirect_uri=http://localhost:8083/callback&response_type=code&scope=openid+profile+email&state=xyz",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8082",
+              "path": [
+                "realms",
+                "{{realm}}",
+                "protocol",
+                "openid-connect",
+                "auth"
+              ],
+              "query": [
+                {
+                  "key": "client_id",
+                  "value": "{{client_id}}"
+                },
+                {
+                  "key": "redirect_uri",
+                  "value": "http://localhost:8083/callback"
+                },
+                {
+                  "key": "response_type",
+                  "value": "code"
+                },
+                {
+                  "key": "scope",
+                  "value": "openid profile email"
+                },
+                {
+                  "key": "state",
+                  "value": "xyz"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "client_id",
+                  "value": "{{client_id}}"
+                },
+                {
+                  "key": "refresh_token",
+                  "value": "{{refresh_token}}"
+                }
+              ]
+            },
+            "url": "{{keycloak_base}}/realms/{{realm}}/protocol/openid-connect/logout"
+          }
+        }
+      ]
     },
     {
-      "name": "KYC Status",
-      "request": {
-        "method": "GET",
-        "header": [
-          { "key": "Authorization", "value": "Bearer {{access_token}}" },
-          { "key": "X-Trace-Id", "value": "{{$guid}}" }
-        ],
-        "url": "{{gateway_base}}/api/v1/kyc/status"
-      }
-    },
-    {
-      "name": "Unauthorized Check",
-      "request": {
-        "method": "GET",
-        "url": "{{gateway_base}}/api/v1/customers/me"
-      }
+      "name": "API Endpoints",
+      "item": [
+        {
+          "name": "Auth Me",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "X-Trace-Id", "value": "{{$guid}}" }
+            ],
+            "url": "{{gateway_base}}/api/v1/auth/me"
+          }
+        },
+        {
+          "name": "Register Customer",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Trace-Id", "value": "{{$guid}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"demo.customer@example.com\",\n  \"full_name\": \"Demo Customer\",\n  \"street\": \"123 Main St\",\n  \"city\": \"Montreal\",\n  \"province\": \"QC\",\n  \"postal_code\": \"H2X1Z5\",\n  \"country\": \"Canada\",\n  \"nas\": \"123456789\"\n}"
+            },
+            "url": "{{gateway_base}}/api/v1/customers/register"
+          }
+        },
+        {
+          "name": "Customer Me",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "X-Trace-Id", "value": "{{$guid}}" }
+            ],
+            "url": "{{gateway_base}}/api/v1/customers/me"
+          }
+        },
+        {
+          "name": "KYC Submit",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "X-Trace-Id", "value": "{{$guid}}" }
+            ],
+            "url": "{{gateway_base}}/api/v1/kyc/submit"
+          }
+        },
+        {
+          "name": "KYC Confirm",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Trace-Id", "value": "{{$guid}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"approved\": true\n}"
+            },
+            "url": "{{gateway_base}}/api/v1/kyc/confirm"
+          }
+        },
+        {
+          "name": "KYC Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "X-Trace-Id", "value": "{{$guid}}" }
+            ],
+            "url": "{{gateway_base}}/api/v1/kyc/status"
+          }
+        },
+        {
+          "name": "Unauthorized Check",
+          "request": {
+            "method": "GET",
+            "url": "{{gateway_base}}/api/v1/customers/me"
+          }
+        }
+      ]
     }
   ]
 }

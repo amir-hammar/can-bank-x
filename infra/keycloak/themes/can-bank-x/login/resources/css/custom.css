@@ -1,0 +1,220 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=DM+Serif+Display&display=swap');
+
+/* ==== AGGRESSIVE OVERRIDES TO COMPLETELY REPLACE PATTERNFLY ==== */
+* {
+  box-sizing: border-box;
+}
+
+html,
+html body,
+body,
+body.login-pf,
+html body.login-pf,
+.login-pf body {
+  font-family: 'DM Sans', sans-serif !important;
+  color: hsl(220 15% 92%) !important;
+  background: hsl(222 30% 6%) !important;
+  background-color: hsl(222 30% 6%) !important;
+  min-height: 100vh !important;
+  position: relative !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+:root {
+  --background: hsl(222 30% 6%);
+  --foreground: hsl(220 15% 92%);
+  --card: hsla(222, 25%, 10%, 0.72);
+  --card-border: hsla(225, 73%, 50%, 0.18);
+  --primary: hsl(225 73% 50%);
+  --primary-strong: hsl(225 90% 60%);
+  --muted-foreground: hsl(220 10% 72%);
+  --input: hsl(222 20% 18%);
+  --radius: 16px;
+}
+
+body.login-pf::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: url('../img/city-skyline.jpg') center center / cover no-repeat;
+  z-index: 0;
+}
+
+body.login-pf::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at top, hsla(225, 73%, 50%, 0.08), transparent 60%),
+    linear-gradient(180deg, hsla(222, 30%, 4%, 0.72) 0%, hsla(222, 30%, 6%, 0.88) 50%, hsla(222, 30%, 6%, 0.95) 100%);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  z-index: 1;
+}
+
+#kc-header,
+#kc-content,
+#kc-info,
+#kc-container,
+#kc-container-wrapper,
+.login-pf #kc-container,
+.login-pf #kc-content,
+#kc-form {
+  position: relative !important;
+  z-index: 2 !important;
+  background: transparent !important;
+}
+
+#kc-page-title,
+#kc-header-wrapper,
+.login-pf #kc-page-title,
+.login-pf #kc-header-wrapper {
+  font-family: 'DM Serif Display', serif !important;
+  color: var(--foreground) !important;
+  letter-spacing: 0.01em;
+}
+
+#kc-header-wrapper {
+  font-size: 28px !important;
+  margin-bottom: 6px;
+}
+
+#kc-content-wrapper,
+#kc-form-wrapper,
+.login-pf #kc-content-wrapper,
+.login-pf #kc-form-wrapper {
+  background: var(--card) !important;
+  border: 1px solid var(--card-border) !important;
+  border-radius: var(--radius) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  backdrop-filter: blur(20px) !important;
+  box-shadow: 0 20px 40px hsla(225, 90%, 55%, 0.12), 0 8px 24px rgba(0, 0, 0, 0.35) !important;
+}
+
+#kc-content-wrapper {
+  padding: 2rem;
+}
+
+.kcFormCardClass,
+.login-pf .kcFormCardClass,
+.card-pf {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+.kcLabelClass,
+label,
+.login-pf label,
+.login-pf .kcLabelClass {
+  color: var(--foreground) !important;
+  font-weight: 600 !important;
+  font-family: 'DM Sans', sans-serif !important;
+}
+
+.kcInputClass,
+input[type='text'],
+input[type='password'],
+input[type='email'],
+input[type='tel'],
+.login-pf input[type='text'],
+.login-pf input[type='password'],
+.login-pf input[type='email'] {
+  background: hsla(222, 20%, 12%, 0.95) !important;
+  border: 1px solid var(--input) !important;
+  color: var(--foreground) !important;
+  border-radius: 10px !important;
+  min-height: 44px !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  font-family: 'DM Sans', sans-serif !important;
+}
+
+.kcInputClass:focus,
+input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px hsla(225, 73%, 50%, 0.3), 0 0 15px hsla(225, 73%, 50%, 0.12);
+  outline: none;
+}
+
+.kcButtonClass,
+.kcButtonPrimaryClass,
+#kc-login,
+input[type='submit'],
+.login-pf .kcButtonPrimaryClass,
+.login-pf input[type='submit'] {
+  width: 100% !important;
+  border: 0 !important;
+  border-radius: 10px !important;
+  min-height: 46px !important;
+  color: white !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.01em;
+  background: linear-gradient(135deg, hsl(225, 73%, 45%), hsl(225, 90%, 60%)) !important;
+  transition: transform 0.2s ease, box-shadow 0.25s ease, filter 0.25s ease;
+  font-family: 'DM Sans', sans-serif !important;
+}
+
+.kcButtonPrimaryClass:hover,
+#kc-login:hover,
+input[type='submit']:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+  box-shadow: 0 0 20px hsla(225, 90%, 55%, 0.35), 0 0 40px hsla(225, 90%, 55%, 0.15);
+}
+
+.kcButtonPrimaryClass:active,
+#kc-login:active,
+input[type='submit']:active {
+  transform: translateY(0);
+}
+
+a,
+#kc-registration a,
+#kc-info a {
+  color: var(--primary-strong);
+}
+
+a:hover,
+#kc-registration a:hover,
+#kc-info a:hover {
+  color: hsl(225 100% 72%);
+  text-decoration: underline;
+}
+
+#kc-registration,
+#kc-info {
+  color: var(--muted-foreground);
+}
+
+#kc-form-options,
+.checkbox,
+.kcFormOptionsWrapperClass {
+  color: var(--muted-foreground);
+}
+
+.alert-error,
+.pf-c-alert.pf-m-danger {
+  background: hsla(0, 72%, 51%, 0.16);
+  border: 1px solid hsla(0, 72%, 51%, 0.35);
+  color: hsl(0 85% 86%);
+  border-radius: 10px;
+}
+
+.alert-success,
+.pf-c-alert.pf-m-success {
+  background: hsla(145, 63%, 42%, 0.16);
+  border: 1px solid hsla(145, 63%, 42%, 0.35);
+  color: hsl(145 70% 84%);
+  border-radius: 10px;
+}
+
+@media (max-width: 768px) {
+  #kc-content-wrapper {
+    padding: 1.5rem;
+  }
+
+  #kc-header-wrapper {
+    font-size: 24px;
+  }
+}

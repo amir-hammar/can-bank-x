@@ -6,6 +6,10 @@
   "editUsernameAllowed": false,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
+  "loginTheme": "can-bank-x",
+  "accountTheme": "can-bank-x",
+  "adminTheme": "keycloak",
+  "emailTheme": "keycloak",
   "clients": [
     {
       "clientId": "can-bank-x-api",
@@ -16,10 +20,11 @@
       "directAccessGrantsEnabled": true,
       "standardFlowEnabled": true,
       "redirectUris": [
-        "http://localhost:3000/*"
+        "http://localhost:8083/*",
+        "http://localhost:8083/callback"
       ],
       "webOrigins": [
-        "http://localhost:3000"
+        "http://localhost:8083"
       ],
       "defaultClientScopes": [
         "profile",

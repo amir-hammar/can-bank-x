@@ -42,10 +42,13 @@ services:
     environment:
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_SPI_THEME_STATIC_MAX_AGE: "-1"
+      KC_SPI_THEME_CACHE_THEMES: "false"
     ports:
       - "8082:8080"
     volumes:
       - ./infra/keycloak/realm-can-bank-x.json:/opt/keycloak/data/import/realm-can-bank-x.json:ro
+      - ./infra/keycloak/themes:/opt/keycloak/themes:ro
     networks:
       - can-bank-x-network
 
@@ -123,10 +126,6 @@ services:
     depends_on:
       user-service:
         condition: service_healthy
-      account-service:
-        condition: service_healthy
-      transfer-service:
-        condition: service_healthy
       keycloak:
         condition: service_started
     healthcheck:
@@ -145,8 +144,6 @@ services:
       - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     depends_on:
       - user-service
-      - account-service
-      - transfer-service
     networks:
       - can-bank-x-network
 

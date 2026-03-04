@@ -14,7 +14,7 @@
       "stdout": true
     },
     "github.com/devopsfaith/krakend-cors": {
-      "allow_origins": ["http://localhost:3000"],
+      "allow_origins": ["http://localhost:8083"],
       "allow_methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
       "allow_headers": [
         "Authorization",
@@ -41,6 +41,46 @@
         {
           "host": ["http://user-service:8080"],
           "url_pattern": "/health"
+        }
+      ]
+    },
+    {
+      "endpoint": "/auth/realms/can-bank-x/protocol/openid-connect/auth",
+      "method": "GET",
+      "output_encoding": "no-op",
+      "input_query_strings": ["*"],
+      "input_headers": ["*"],
+      "backend": [
+        {
+          "host": ["http://keycloak:8080"],
+          "url_pattern": "/realms/can-bank-x/protocol/openid-connect/auth",
+          "encoding": "no-op"
+        }
+      ]
+    },
+    {
+      "endpoint": "/auth/realms/can-bank-x/protocol/openid-connect/token",
+      "method": "POST",
+      "output_encoding": "no-op",
+      "input_query_strings": ["*"],
+      "input_headers": ["*"],
+      "backend": [
+        {
+          "host": ["http://keycloak:8080"],
+          "url_pattern": "/realms/can-bank-x/protocol/openid-connect/token",
+          "encoding": "no-op"
+        }
+      ]
+    },
+    {
+      "endpoint": "/auth/realms/can-bank-x/protocol/openid-connect/certs",
+      "method": "GET",
+      "output_encoding": "no-op",
+      "backend": [
+        {
+          "host": ["http://keycloak:8080"],
+          "url_pattern": "/realms/can-bank-x/protocol/openid-connect/certs",
+          "encoding": "no-op"
         }
       ]
     },
