@@ -80,6 +80,12 @@ EOF
 EOF
     return
   fi
+  if [ "$endpoint" = "/api/v1/accounts/create" ]; then
+    cat <<'EOF'
+{"customer_id":"cust_e2e_1","account_type":"CHEQUING"}
+EOF
+    return
+  fi
   printf '{}'
 }
 

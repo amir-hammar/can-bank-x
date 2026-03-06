@@ -1,0 +1,51 @@
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Deserialize)]
+pub struct CreateAccountRequest {
+    pub customer_id: String,
+    pub account_type: String,
+    pub initial_balance: Option<f64>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct CreateAccountResponse {
+    pub account_id: String,
+    pub status: &'static str,
+    pub account_type: String,
+    pub currency: String,
+    pub available_balance: f64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ListAccountsQuery {
+    pub customer_id: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AccountBalanceQuery {
+    pub account_id: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct AccountSummaryResponse {
+    pub account_id: String,
+    pub customer_id: String,
+    pub account_type: String,
+    pub status: String,
+    pub currency: String,
+    pub available_balance: f64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct AccountBalanceResponse {
+    pub account_id: String,
+    pub available_balance: f64,
+    pub ledger_balance: f64,
+    pub currency: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ErrorResponse {
+    pub code: &'static str,
+    pub message: &'static str,
+}
