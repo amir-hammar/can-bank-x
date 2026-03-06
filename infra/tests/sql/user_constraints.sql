@@ -2,14 +2,26 @@
 
 BEGIN;
 
-INSERT INTO customers (id, keycloak_sub, email, status)
-VALUES ('11111111-1111-1111-1111-111111111111', 'kc-sub-1', 'user1@example.com', 'PENDING');
+INSERT INTO customers (id, keycloak_sub, username, email, status)
+VALUES (
+  '11111111-1111-1111-1111-111111111111',
+  'kc-sub-1',
+  'user1',
+  'user1@example.com',
+  'PENDING'
+);
 
 DO $$
 BEGIN
   BEGIN
-    INSERT INTO customers (id, keycloak_sub, email, status)
-    VALUES ('11111111-1111-1111-1111-111111111112', 'kc-sub-2', 'user1@example.com', 'PENDING');
+    INSERT INTO customers (id, keycloak_sub, username, email, status)
+    VALUES (
+      '11111111-1111-1111-1111-111111111112',
+      'kc-sub-2',
+      'user2',
+      'user1@example.com',
+      'PENDING'
+    );
     RAISE EXCEPTION 'ASSERT_FAIL: duplicate email insert unexpectedly succeeded';
   EXCEPTION WHEN unique_violation THEN
     NULL;
@@ -19,8 +31,14 @@ END $$;
 DO $$
 BEGIN
   BEGIN
-    INSERT INTO customers (id, keycloak_sub, email, status)
-    VALUES ('11111111-1111-1111-1111-111111111113', 'kc-sub-1', 'user2@example.com', 'PENDING');
+    INSERT INTO customers (id, keycloak_sub, username, email, status)
+    VALUES (
+      '11111111-1111-1111-1111-111111111113',
+      'kc-sub-1',
+      'user3',
+      'user2@example.com',
+      'PENDING'
+    );
     RAISE EXCEPTION 'ASSERT_FAIL: duplicate keycloak_sub insert unexpectedly succeeded';
   EXCEPTION WHEN unique_violation THEN
     NULL;
