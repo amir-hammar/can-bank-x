@@ -1,5 +1,8 @@
 use account_service::{app_state::AppState, create_app};
-use axum::{body::Body, http::{Request, StatusCode}};
+use axum::{
+    body::Body,
+    http::{Request, StatusCode},
+};
 use tower::ServiceExt;
 
 #[tokio::test]

@@ -33,14 +33,20 @@ impl AccountRepository {
             ledger_balance: initial_balance,
         };
 
-        let mut guard = self.accounts.lock().expect("account repository mutex poisoned");
+        let mut guard = self
+            .accounts
+            .lock()
+            .expect("account repository mutex poisoned");
         guard.push(account.clone());
 
         account
     }
 
     pub async fn list_accounts_by_customer(&self, customer_id: &str) -> Vec<Account> {
-        let guard = self.accounts.lock().expect("account repository mutex poisoned");
+        let guard = self
+            .accounts
+            .lock()
+            .expect("account repository mutex poisoned");
         guard
             .iter()
             .filter(|account| account.customer_id == customer_id)
@@ -49,7 +55,10 @@ impl AccountRepository {
     }
 
     pub async fn get_account_by_id(&self, account_id: &str) -> Option<Account> {
-        let guard = self.accounts.lock().expect("account repository mutex poisoned");
+        let guard = self
+            .accounts
+            .lock()
+            .expect("account repository mutex poisoned");
         guard
             .iter()
             .find(|account| account.account_id == account_id)

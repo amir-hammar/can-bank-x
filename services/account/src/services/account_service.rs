@@ -68,9 +68,7 @@ impl AccountService {
             .repository
             .get_account_by_id(&query.account_id)
             .await
-            .ok_or_else(|| {
-                AppError::not_found("ACCOUNT_NOT_FOUND", "account_id was not found")
-            })?;
+            .ok_or_else(|| AppError::not_found("ACCOUNT_NOT_FOUND", "account_id was not found"))?;
 
         Ok(AccountBalanceResponse {
             account_id: account.account_id,

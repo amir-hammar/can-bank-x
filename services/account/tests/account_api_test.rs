@@ -1,5 +1,8 @@
 use account_service::{app_state::AppState, create_app};
-use axum::{body::Body, http::{Request, StatusCode}};
+use axum::{
+    body::Body,
+    http::{Request, StatusCode},
+};
 use http_body_util::BodyExt;
 use tower::ServiceExt;
 
@@ -45,7 +48,11 @@ async fn list_and_balance_flow_returns_200() {
         ))
         .expect("failed to build create request");
 
-    let create_response = app.clone().oneshot(create_request).await.expect("request failed");
+    let create_response = app
+        .clone()
+        .oneshot(create_request)
+        .await
+        .expect("request failed");
     assert_eq!(create_response.status(), StatusCode::CREATED);
 
     let list_request = Request::builder()
@@ -54,7 +61,11 @@ async fn list_and_balance_flow_returns_200() {
         .body(Body::empty())
         .expect("failed to build list request");
 
-    let list_response = app.clone().oneshot(list_request).await.expect("request failed");
+    let list_response = app
+        .clone()
+        .oneshot(list_request)
+        .await
+        .expect("request failed");
     assert_eq!(list_response.status(), StatusCode::OK);
 
     let list_body = list_response

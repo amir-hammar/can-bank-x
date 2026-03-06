@@ -1,4 +1,8 @@
-use axum::{extract::{Query, State}, http::StatusCode, Json};
+use axum::{
+    extract::{Query, State},
+    http::StatusCode,
+    Json,
+};
 
 use crate::{
     app_state::AppState,
