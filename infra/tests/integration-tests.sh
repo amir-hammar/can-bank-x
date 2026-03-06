@@ -1,6 +1,12 @@
 #!/usr/bin/env sh
 set -eu
 
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+ROOT_DIR=$(CDPATH= cd -- "$SCRIPT_DIR/../.." && pwd)
+cd "$ROOT_DIR"
+
+sh infra/tests/restart-required-services.sh
+
 mkdir -p artifacts
 
 echo "Running service health checks..." | tee artifacts/integration.log

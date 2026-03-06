@@ -135,6 +135,12 @@ jobs:
       - name: Integration tests
         run: sh infra/tests/integration-tests.sh
 
+      - name: Keycloak tests
+        run: sh infra/tests/keycloak-tests.sh
+
+      - name: KrakenD endpoint coverage
+        run: sh infra/tests/krakend-endpoints-tests.sh
+
       - name: E2E tests through gateway
         run: sh infra/tests/e2e-tests.sh
 

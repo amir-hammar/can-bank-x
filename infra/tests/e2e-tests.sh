@@ -1,6 +1,12 @@
 #!/usr/bin/env sh
 set -eu
 
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+ROOT_DIR=$(CDPATH= cd -- "$SCRIPT_DIR/../.." && pwd)
+cd "$ROOT_DIR"
+
+sh infra/tests/restart-required-services.sh
+
 mkdir -p artifacts
 LOG_FILE="artifacts/e2e.log"
 TOKEN_FILE="artifacts/token.json"
@@ -10,6 +16,13 @@ KEYCLOAK_TOKEN_URL="http://localhost:8082/realms/can-bank-x/protocol/openid-conn
 KEYCLOAK_READY_URL="http://localhost:8082/realms/can-bank-x/.well-known/openid-configuration"
 HEALTH_RETRIES="${E2E_HEALTH_RETRIES:-30}"
 HEALTH_SLEEP_SECONDS="${E2E_HEALTH_SLEEP_SECONDS:-1}"
+
+json_get() {
+  key="$1"
+  json="$2"
+  # Extract JSON value using grep and sed - handles quoted strings
+  printf "%s" "$json" | grep -o "\"$key\":\"[^\"]*\"" | sed "s/.*\"$key\":\"//" | sed 's/".*//'
+}
 
 echo "Waiting for api-gateway health..." | tee "$LOG_FILE"
 HEALTHY=false
@@ -54,7 +67,7 @@ if [ "$TOKEN_STATUS" -ne 200 ]; then
   exit 1
 fi
 
-ACCESS_TOKEN=$(python -c "import json; print(json.load(open('$TOKEN_FILE')).get('access_token',''))")
+ACCESS_TOKEN=$(json_get "access_token" "$(cat "$TOKEN_FILE")")
 if [ -z "$ACCESS_TOKEN" ]; then
   echo "Token response missing access_token" | tee -a "$LOG_FILE"
   cat "$TOKEN_FILE" | tee -a "$LOG_FILE"

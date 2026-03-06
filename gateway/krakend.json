@@ -6,7 +6,8 @@
   "cache_ttl": "300s",
   "extra_config": {
     "router": {
-      "return_error_msg": true
+      "return_error_msg": true,
+      "auto_options": true
     },
     "telemetry/logging": {
       "level": "INFO",
@@ -21,6 +22,13 @@
         "Content-Type"
       ],
       "expose_headers": [],
+      "allow_credentials": true,
+      "max_age": "12h"
+    },
+    "security/cors": {
+      "allow_origins": ["http://localhost:8083"],
+      "allow_methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+      "allow_headers": ["Authorization", "Content-Type"],
       "allow_credentials": true,
       "max_age": "12h"
     },
@@ -59,6 +67,143 @@
       ]
     },
     {
+      "endpoint": "/auth/realms/can-bank-x/protocol/openid-connect/registrations",
+      "method": "GET",
+      "output_encoding": "no-op",
+      "input_query_strings": ["*"],
+      "input_headers": ["*"],
+      "backend": [
+        {
+          "host": ["http://keycloak:8080"],
+          "url_pattern": "/realms/can-bank-x/protocol/openid-connect/registrations",
+          "encoding": "no-op"
+        }
+      ]
+    },
+    {
+      "endpoint": "/realms/can-bank-x/protocol/openid-connect/auth",
+      "method": "GET",
+      "output_encoding": "no-op",
+      "input_query_strings": ["*"],
+      "input_headers": ["*"],
+      "backend": [
+        {
+          "host": ["http://keycloak:8080"],
+          "url_pattern": "/realms/can-bank-x/protocol/openid-connect/auth",
+          "encoding": "no-op"
+        }
+      ]
+    },
+    {
+      "endpoint": "/realms/can-bank-x/protocol/openid-connect/registrations",
+      "method": "GET",
+      "output_encoding": "no-op",
+      "input_query_strings": ["*"],
+      "input_headers": ["*"],
+      "backend": [
+        {
+          "host": ["http://keycloak:8080"],
+          "url_pattern": "/realms/can-bank-x/protocol/openid-connect/registrations",
+          "encoding": "no-op"
+        }
+      ]
+    },
+    {
+      "endpoint": "/realms/can-bank-x/login-actions/{path}",
+      "method": "GET",
+      "output_encoding": "no-op",
+      "input_query_strings": ["*"],
+      "input_headers": ["*"],
+      "backend": [
+        {
+          "host": ["http://keycloak:8080"],
+          "url_pattern": "/realms/can-bank-x/login-actions/{path}",
+          "encoding": "no-op"
+        }
+      ]
+    },
+    {
+      "endpoint": "/realms/can-bank-x/login-actions/{path}",
+      "method": "POST",
+      "output_encoding": "no-op",
+      "input_query_strings": ["*"],
+      "input_headers": ["*"],
+      "backend": [
+        {
+          "host": ["http://keycloak:8080"],
+          "url_pattern": "/realms/can-bank-x/login-actions/{path}",
+          "encoding": "no-op"
+        }
+      ]
+    },
+    {
+      "endpoint": "/auth/realms/can-bank-x/login-actions/{path}",
+      "method": "GET",
+      "output_encoding": "no-op",
+      "input_query_strings": ["*"],
+      "input_headers": ["*"],
+      "backend": [
+        {
+          "host": ["http://keycloak:8080"],
+          "url_pattern": "/realms/can-bank-x/login-actions/{path}",
+          "encoding": "no-op"
+        }
+      ]
+    },
+    {
+      "endpoint": "/auth/realms/can-bank-x/login-actions/{path}",
+      "method": "POST",
+      "output_encoding": "no-op",
+      "input_query_strings": ["*"],
+      "input_headers": ["*"],
+      "backend": [
+        {
+          "host": ["http://keycloak:8080"],
+          "url_pattern": "/realms/can-bank-x/login-actions/{path}",
+          "encoding": "no-op"
+        }
+      ]
+    },
+    {
+      "endpoint": "/resources/{a}/{b}/{c}/{d}/{e}",
+      "method": "GET",
+      "output_encoding": "no-op",
+      "input_query_strings": ["*"],
+      "backend": [
+        {
+          "host": ["http://keycloak:8080"],
+          "url_pattern": "/resources/{a}/{b}/{c}/{d}/{e}",
+          "encoding": "no-op"
+        }
+      ]
+    },
+    {
+      "endpoint": "/resources/{a}/{b}/{c}/{d}/{e}/{f}",
+      "method": "GET",
+      "output_encoding": "no-op",
+      "input_query_strings": ["*"],
+      "backend": [
+        {
+          "host": ["http://keycloak:8080"],
+          "url_pattern": "/resources/{a}/{b}/{c}/{d}/{e}/{f}",
+          "encoding": "no-op"
+        }
+      ]
+    },
+    {
+      "endpoint": "/resources/{a}/{b}/{c}/{d}/{e}/{f}/{g}",
+      "method": "GET",
+      "output_encoding": "no-op",
+      "input_query_strings": ["*"],
+      "backend": [
+        {
+          "host": ["http://keycloak:8080"],
+          "url_pattern": "/resources/{a}/{b}/{c}/{d}/{e}/{f}/{g}",
+          "encoding": "no-op"
+        }
+      ]
+    },
+    {
       "endpoint": "/auth/realms/can-bank-x/protocol/openid-connect/token",
       "method": "POST",
       "output_encoding": "no-op",
@@ -87,7 +232,7 @@
     {
       "endpoint": "/api/v1/auth/me",
       "method": "GET",
-      "input_headers": ["Authorization", "Content-Type", "X-Trace-Id", "X-Request-Id", "x-user-sub"],
+      "input_headers": ["Authorization", "Content-Type", "X-Trace-Id", "X-Request-Id"],
       "extra_config": {
         "github.com/devopsfaith/krakend-jose/validator": {
           "alg": "RS256",

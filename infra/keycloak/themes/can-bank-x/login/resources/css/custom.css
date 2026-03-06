@@ -1,39 +1,37 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=DM+Serif+Display&display=swap');
 
-/* ==== AGGRESSIVE OVERRIDES TO COMPLETELY REPLACE PATTERNFLY ==== */
 * {
   box-sizing: border-box;
 }
 
 html,
-html body,
-body,
-body.login-pf,
-html body.login-pf,
-.login-pf body {
+body {
+  margin: 0;
+  padding: 0;
+}
+
+html.login-pf body {
   font-family: 'DM Sans', sans-serif !important;
   color: hsl(220 15% 92%) !important;
   background: hsl(222 30% 6%) !important;
   background-color: hsl(222 30% 6%) !important;
   min-height: 100vh !important;
   position: relative !important;
-  margin: 0 !important;
-  padding: 0 !important;
 }
 
 :root {
   --background: hsl(222 30% 6%);
   --foreground: hsl(220 15% 92%);
-  --card: hsla(222, 25%, 10%, 0.72);
-  --card-border: hsla(225, 73%, 50%, 0.18);
+  --card: hsla(222, 25%, 10%, 0.7);
+  --card-border: hsla(225, 73%, 50%, 0.15);
   --primary: hsl(225 73% 50%);
   --primary-strong: hsl(225 90% 60%);
   --muted-foreground: hsl(220 10% 72%);
-  --input: hsl(222 20% 18%);
+  --input: hsl(222 20% 20%);
   --radius: 16px;
 }
 
-body.login-pf::before {
+html.login-pf body::before {
   content: '';
   position: fixed;
   inset: 0;
@@ -41,7 +39,7 @@ body.login-pf::before {
   z-index: 0;
 }
 
-body.login-pf::after {
+html.login-pf body::after {
   content: '';
   position: fixed;
   inset: 0;
@@ -58,12 +56,67 @@ body.login-pf::after {
 #kc-info,
 #kc-container,
 #kc-container-wrapper,
-.login-pf #kc-container,
-.login-pf #kc-content,
+#kc-form-buttons,
+#kc-form-options,
+#kc-info-wrapper,
+#kc-registration-container,
 #kc-form {
   position: relative !important;
   z-index: 2 !important;
   background: transparent !important;
+}
+
+.login-pf-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  position: relative;
+  z-index: 2;
+}
+
+.login-pf-page-header {
+  display: none;
+}
+
+.card-pf {
+  width: 100%;
+  max-width: 28rem;
+  border: 1px solid var(--card-border) !important;
+  border-radius: var(--radius) !important;
+  background: var(--card) !important;
+  box-shadow: 0 20px 40px hsla(225, 90%, 55%, 0.12), 0 8px 24px rgba(0, 0, 0, 0.35) !important;
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  margin: 0 !important;
+  overflow: hidden;
+}
+
+.login-pf-header .subtitle {
+  display: none !important;
+}
+
+.cbx-brand-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+  color: var(--foreground);
+  font-family: 'DM Serif Display', serif;
+  font-size: 1.25rem;
+}
+
+.cbx-brand-icon {
+  width: 1.75rem;
+  height: 1.75rem;
+  color: hsl(225 73% 50%);
+}
+
+.cbx-page-subtitle {
+  margin: 0.5rem 0 0;
+  color: hsl(220 10% 72%);
+  font-size: 0.95rem;
 }
 
 #kc-page-title,
@@ -80,20 +133,75 @@ body.login-pf::after {
   margin-bottom: 6px;
 }
 
+#kc-content,
 #kc-content-wrapper,
-#kc-form-wrapper,
-.login-pf #kc-content-wrapper,
-.login-pf #kc-form-wrapper {
-  background: var(--card) !important;
-  border: 1px solid var(--card-border) !important;
-  border-radius: var(--radius) !important;
-  -webkit-backdrop-filter: blur(20px) !important;
-  backdrop-filter: blur(20px) !important;
-  box-shadow: 0 20px 40px hsla(225, 90%, 55%, 0.12), 0 8px 24px rgba(0, 0, 0, 0.35) !important;
+#kc-form-wrapper {
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
 }
 
-#kc-content-wrapper {
-  padding: 2rem;
+.login-pf-header,
+#kc-form,
+#kc-info {
+  padding-left: 2rem;
+  padding-right: 2rem;
+}
+
+.login-pf-header {
+  padding-top: 2rem;
+}
+
+#kc-info {
+  padding-bottom: 2rem;
+}
+
+#kc-form {
+  padding-bottom: 1rem;
+}
+
+.form-group {
+  margin-bottom: 1.1rem !important;
+}
+
+.cbx-register-extra {
+  margin-top: 0.5rem;
+}
+
+.cbx-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  position: relative;
+}
+
+.cbx-form-group .pf-c-form__helper-text,
+.cbx-form-group .kc-feedback-text,
+.cbx-form-group .help-block {
+  margin: 0.25rem 0 0;
+  min-height: 1rem;
+  font-size: 0.82rem;
+  color: hsl(0 85% 86%);
+}
+
+.cbx-register-fieldset {
+  border: 1px solid hsla(225, 73%, 50%, 0.22);
+  border-radius: 14px;
+  padding: 0.9rem 0.9rem 0.1rem;
+  margin: 0 0 1.1rem;
+}
+
+.cbx-register-fieldset legend {
+  color: var(--muted-foreground);
+  font-size: 0.85rem;
+  padding: 0 0.45rem;
+}
+
+.cbx-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
 }
 
 .kcFormCardClass,
@@ -118,16 +226,86 @@ input[type='text'],
 input[type='password'],
 input[type='email'],
 input[type='tel'],
+.pf-c-form-control,
 .login-pf input[type='text'],
 .login-pf input[type='password'],
 .login-pf input[type='email'] {
   background: hsla(222, 20%, 12%, 0.95) !important;
   border: 1px solid var(--input) !important;
   color: var(--foreground) !important;
-  border-radius: 10px !important;
-  min-height: 44px !important;
+  border-radius: 12px !important;
+  min-height: 48px !important;
+  padding: 0.7rem 0.85rem !important;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
   font-family: 'DM Sans', sans-serif !important;
+}
+
+input::placeholder {
+  color: hsl(220 10% 62%) !important;
+}
+
+.pf-c-input-group {
+  position: relative;
+  display: block;
+  background: transparent !important;
+  border: 0 !important;
+}
+
+.pf-c-input-group .pf-c-form-control {
+  width: 100%;
+  padding-right: 2.75rem !important;
+}
+
+.pf-c-input-group .pf-c-button.pf-m-control,
+.pf-c-input-group .cbx-password-toggle {
+  position: absolute;
+  right: 0.4rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2.5rem;
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  border-radius: 0.5rem !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  color: hsl(220 10% 72%) !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.pf-c-input-group .pf-c-button.pf-m-control::before,
+.pf-c-input-group .pf-c-button.pf-m-control::after,
+.pf-c-input-group .cbx-password-toggle::before,
+.pf-c-input-group .cbx-password-toggle::after {
+  display: none !important;
+}
+
+.pf-c-input-group .pf-c-button.pf-m-control:hover,
+.pf-c-input-group .cbx-password-toggle:hover {
+  color: var(--foreground) !important;
+  background: hsla(225, 73%, 50%, 0.1) !important;
+}
+
+.pf-c-input-group .pf-c-button.pf-m-control:focus-visible,
+.pf-c-input-group .cbx-password-toggle:focus-visible {
+  outline: none;
+  color: var(--foreground) !important;
+  background: hsla(225, 73%, 50%, 0.14) !important;
+}
+
+.pf-c-input-group .pf-c-button.pf-m-control svg,
+.pf-c-input-group .cbx-password-toggle svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.pf-c-input-group .pf-c-button.pf-m-control i,
+.pf-c-input-group .cbx-password-toggle i {
+  display: none !important;
 }
 
 .kcInputClass:focus,
@@ -141,6 +319,7 @@ input:focus {
 .kcButtonPrimaryClass,
 #kc-login,
 input[type='submit'],
+.pf-c-button.pf-m-primary,
 .login-pf .kcButtonPrimaryClass,
 .login-pf input[type='submit'] {
   width: 100% !important;
@@ -187,6 +366,46 @@ a:hover,
   color: var(--muted-foreground);
 }
 
+#kc-info {
+  text-align: center;
+}
+
+#kc-registration {
+  font-size: 0.9rem;
+}
+
+.cbx-home-button {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2rem;
+  padding: 0 0.7rem;
+  border-radius: 0.5rem;
+  text-decoration: none;
+  color: var(--muted-foreground);
+  border: 1px solid transparent;
+  background: transparent;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cbx-home-button:hover {
+  color: var(--foreground);
+  background: hsla(225, 73%, 50%, 0.1);
+}
+
+.cbx-home-button svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
 #kc-form-options,
 .checkbox,
 .kcFormOptionsWrapperClass {
@@ -210,11 +429,28 @@ a:hover,
 }
 
 @media (max-width: 768px) {
-  #kc-content-wrapper {
-    padding: 1.5rem;
+  .login-pf-header,
+  #kc-form,
+  #kc-info {
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
   }
 
   #kc-header-wrapper {
     font-size: 24px;
+  }
+
+  .card-pf {
+    max-width: 95vw;
+  }
+
+  .cbx-grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .cbx-grid-2 {
+    grid-template-columns: 1fr;
   }
 }

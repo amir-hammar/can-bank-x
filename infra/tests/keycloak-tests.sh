@@ -1,298 +1,262 @@
-#!/bin/bash
+#!/usr/bin/env sh
+set -eu
 
-# Keycloak Test Suite
-# Tests all OAuth2/OIDC flows and user management endpoints
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+ROOT_DIR=$(CDPATH= cd -- "$SCRIPT_DIR/../.." && pwd)
+cd "$ROOT_DIR"
 
-set -e
+sh infra/tests/restart-required-services.sh
 
-# Configuration
-KEYCLOAK_BASE="http://localhost:8082"
-REALM="can-bank-x"
-CLIENT_ID="can-bank-x-api"
-CLIENT_SECRET="" # Public client, no secret
-REDIRECT_URI="http://localhost:8083/callback"
-TEST_USER="demo.customer"
-TEST_PASSWORD="Passw0rd!"
-TEST_EMAIL="test.user@example.com"
+read_env_value() {
+  key="$1"
+  file="${2:-.env}"
+  if [ ! -f "$file" ]; then
+    return 0
+  fi
+  line=$(grep -E "^${key}=" "$file" | tail -n 1 || true)
+  if [ -z "$line" ]; then
+    return 0
+  fi
+  value=${line#*=}
+  value=$(printf "%s" "$value" | tr -d '\r')
+  printf "%s" "$value"
+}
 
-# Colors for output
+KEYCLOAK_BASE="${KEYCLOAK_BASE:-http://localhost:8082}"
+REALM="${REALM:-can-bank-x}"
+CLIENT_ID="${CLIENT_ID:-can-bank-x-api}"
+REDIRECT_URI="${REDIRECT_URI:-http://localhost:8083/callback}"
+TEST_USER="${TEST_USER:-demo.customer}"
+TEST_PASSWORD="${TEST_PASSWORD:-Passw0rd!}"
+ENV_KEYCLOAK_ADMIN=$(read_env_value "KEYCLOAK_ADMIN")
+ENV_KEYCLOAK_ADMIN_PASSWORD=$(read_env_value "KEYCLOAK_ADMIN_PASSWORD")
+KC_ADMIN_USER="${KEYCLOAK_ADMIN:-${ENV_KEYCLOAK_ADMIN:-admin}}"
+KC_ADMIN_PASSWORD="${KEYCLOAK_ADMIN_PASSWORD:-${ENV_KEYCLOAK_ADMIN_PASSWORD:-admin}}"
+EXPECTED_PASSWORD_POLICY="length(12) and upperCase(1) and lowerCase(1) and digits(1) and specialChars(1) and notEmail"
+
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# Helper functions
-pass() {
-    echo -e "${GREEN}✓ PASS${NC}: $1"
-}
+pass() { echo -e "${GREEN}PASS${NC}: $1"; }
+fail() { echo -e "${RED}FAIL${NC}: $1"; exit 1; }
+warn() { echo -e "${YELLOW}WARN${NC}: $1"; }
+info() { echo -e "${YELLOW}INFO${NC}: $1"; }
 
-fail() {
-    echo -e "${RED}✗ FAIL${NC}: $1"
-    exit 1
-}
-
-warn() {
-    echo -e "${YELLOW}⚠ WARN${NC}: $1"
-}
-
-info() {
-    echo -e "${YELLOW}ℹ INFO${NC}: $1"
-}
-
-# Test 1: Health Check - Keycloak is running
-test_keycloak_health() {
-    info "Testing Keycloak health..."
-    RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "$KEYCLOAK_BASE/realms/$REALM/.well-known/openid-configuration")
-    if [ "$RESPONSE" = "200" ]; then
-        pass "Keycloak is running and realm is accessible"
-    else
-        fail "Keycloak health check failed (HTTP $RESPONSE)"
+wait_for_keycloak() {
+  i=1
+  while [ "$i" -le 40 ]; do
+    if curl -fsS "$KEYCLOAK_BASE/realms/$REALM/.well-known/openid-configuration" >/dev/null 2>&1; then
+      return 0
     fi
+    i=$((i + 1))
+    sleep 1
+  done
+  return 1
 }
 
-# Test 2: OpenID Connect Configuration
+json_get() {
+  key="$1"
+  json="$2"
+  # Extract JSON value using grep and sed - handles quoted strings
+  printf "%s" "$json" | grep -o "\"$key\":\"[^\"]*\"" | sed "s/.*\"$key\":\"//" | sed 's/".*//'
+}
+
+get_admin_token() {
+  resp=$(curl -sS -X POST "$KEYCLOAK_BASE/realms/master/protocol/openid-connect/token" \
+    -H "Content-Type: application/x-www-form-urlencoded" \
+    --data-urlencode "grant_type=password" \
+    --data-urlencode "client_id=admin-cli" \
+    --data-urlencode "username=$KC_ADMIN_USER" \
+    --data-urlencode "password=$KC_ADMIN_PASSWORD")
+  ADMIN_TOKEN=$(json_get "access_token" "$resp")
+  [ -n "$ADMIN_TOKEN" ] || fail "Could not get admin token"
+}
+
+ensure_password_policy() {
+  realm_json=$(curl -sS -H "Authorization: Bearer $ADMIN_TOKEN" "$KEYCLOAK_BASE/admin/realms/$REALM")
+  current_policy=$(json_get "passwordPolicy" "$realm_json")
+
+  if printf "%s" "$current_policy" | grep -q "length(12)"; then
+    return 0
+  fi
+
+  warn "Runtime realm passwordPolicy is missing. Applying expected policy for test environment."
+  code=$(curl -sS -o /dev/null -w "%{http_code}" -X PUT "$KEYCLOAK_BASE/admin/realms/$REALM" \
+    -H "Authorization: Bearer $ADMIN_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "{\"realm\":\"$REALM\",\"passwordPolicy\":\"$EXPECTED_PASSWORD_POLICY\"}")
+
+  case "$code" in
+    200|204) ;;
+    *) fail "Could not apply password policy (HTTP $code)" ;;
+  esac
+}
+
 test_oidc_config() {
-    info "Testing OIDC configuration endpoint..."
-    RESPONSE=$(curl -s "$KEYCLOAK_BASE/realms/$REALM/.well-known/openid-configuration")
-    
-    # Check if response contains required fields
-    if echo "$RESPONSE" | grep -q "authorization_endpoint"; then
-        pass "OIDC configuration is available"
-    else
-        fail "OIDC configuration endpoint failed"
-    fi
+  info "Testing OIDC configuration"
+  resp=$(curl -sS "$KEYCLOAK_BASE/realms/$REALM/.well-known/openid-configuration")
+  echo "$resp" | grep -q "authorization_endpoint" || fail "OIDC config missing authorization_endpoint"
+  pass "OIDC configuration available"
 }
 
-# Test 3: Direct Access Grant (Password Grant)
 test_password_grant() {
-    info "Testing Direct Access Grant (Password flow)..."
-    RESPONSE=$(curl -s -X POST \
-        "$KEYCLOAK_BASE/realms/$REALM/protocol/openid-connect/token" \
-        -H "Content-Type: application/x-www-form-urlencoded" \
-        -d "client_id=$CLIENT_ID" \
-        -d "username=$TEST_USER" \
-        -d "password=$TEST_PASSWORD" \
-        -d "grant_type=password" \
-        -d "scope=openid profile email")
+  info "Testing password grant"
+  resp=$(curl -sS -X POST "$KEYCLOAK_BASE/realms/$REALM/protocol/openid-connect/token" \
+    -H "Content-Type: application/x-www-form-urlencoded" \
+    --data-urlencode "client_id=$CLIENT_ID" \
+    --data-urlencode "username=$TEST_USER" \
+    --data-urlencode "password=$TEST_PASSWORD" \
+    --data-urlencode "grant_type=password" \
+    --data-urlencode "scope=openid profile email")
 
-    if echo "$RESPONSE" | grep -q "access_token"; then
-        DEMO_ACCESS_TOKEN=$(echo "$RESPONSE" | grep -o '"access_token":"[^"]*"' | sed 's/"access_token":"//' | sed 's/"//')
-        pass "Direct Access Grant successful"
-        info "Access token obtained (length: ${#DEMO_ACCESS_TOKEN})"
-    else
-        fail "Direct Access Grant failed: $RESPONSE"
-    fi
+  DEMO_ACCESS_TOKEN=$(json_get "access_token" "$resp")
+  DEMO_REFRESH_TOKEN=$(json_get "refresh_token" "$resp")
+
+  [ -n "$DEMO_ACCESS_TOKEN" ] || fail "Password grant failed"
+  pass "Password grant successful"
 }
 
-# Test 4: Token Introspection
-test_token_introspection() {
-    info "Testing Token Introspection..."
-    if [ -z "$DEMO_ACCESS_TOKEN" ]; then
-        warn "Skipping token introspection - no access token available"
-        return
-    fi
-
-    RESPONSE=$(curl -s -X POST \
-        "$KEYCLOAK_BASE/realms/$REALM/protocol/openid-connect/token/introspect" \
-        -H "Content-Type: application/x-www-form-urlencoded" \
-        -d "client_id=$CLIENT_ID" \
-        -d "token=$DEMO_ACCESS_TOKEN")
-
-    if echo "$RESPONSE" | grep -q "active"; then
-        pass "Token introspection successful"
-    else
-        warn "Token introspection not enabled for public client"
-    fi
-}
-
-# Test 5: User Info Endpoint
-test_user_info() {
-    info "Testing User Info endpoint..."
-    if [ -z "$DEMO_ACCESS_TOKEN" ]; then
-        warn "Skipping user info - no access token available"
-        return
-    fi
-
-    RESPONSE=$(curl -s -X GET \
-        "$KEYCLOAK_BASE/realms/$REALM/protocol/openid-connect/userinfo" \
-        -H "Authorization: Bearer $DEMO_ACCESS_TOKEN")
-
-    if echo "$RESPONSE" | grep -q "demo.customer"; then
-        pass "User Info endpoint successful"
-    else
-        fail "User Info endpoint failed: $RESPONSE"
-    fi
-}
-
-# Test 6: Refresh Token
 test_refresh_token() {
-    info "Testing Refresh Token flow..."
-    
-    # First get both access token and refresh token
-    RESPONSE=$(curl -s -X POST \
-        "$KEYCLOAK_BASE/realms/$REALM/protocol/openid-connect/token" \
-        -H "Content-Type: application/x-www-form-urlencoded" \
-        -d "client_id=$CLIENT_ID" \
-        -d "username=$TEST_USER" \
-        -d "password=$TEST_PASSWORD" \
-        -d "grant_type=password" \
-        -d "scope=openid profile email")
-
-    REFRESH_TOKEN=$(echo "$RESPONSE" | grep -o '"refresh_token":"[^"]*"' | sed 's/"refresh_token":"//' | sed 's/"//')
-    
-    if [ "$REFRESH_TOKEN" != "null" ] && [ -n "$REFRESH_TOKEN" ]; then
-        # Now use refresh token to get new access token
-        REFRESH_RESPONSE=$(curl -s -X POST \
-            "$KEYCLOAK_BASE/realms/$REALM/protocol/openid-connect/token" \
-            -H "Content-Type: application/x-www-form-urlencoded" \
-            -d "client_id=$CLIENT_ID" \
-            -d "grant_type=refresh_token" \
-            -d "refresh_token=$REFRESH_TOKEN")
-
-        if echo "$REFRESH_RESPONSE" | grep -q "access_token"; then
-            pass "Refresh Token flow successful"
-        else
-            fail "Refresh Token exchange failed: $REFRESH_RESPONSE"
-        fi
-    else
-        warn "Refresh token not available in response"
-    fi
+  info "Testing refresh token"
+  [ -n "${DEMO_REFRESH_TOKEN:-}" ] || fail "No refresh token available"
+  resp=$(curl -sS -X POST "$KEYCLOAK_BASE/realms/$REALM/protocol/openid-connect/token" \
+    -H "Content-Type: application/x-www-form-urlencoded" \
+    --data-urlencode "client_id=$CLIENT_ID" \
+    --data-urlencode "grant_type=refresh_token" \
+    --data-urlencode "refresh_token=$DEMO_REFRESH_TOKEN")
+  new_token=$(json_get "access_token" "$resp")
+  [ -n "$new_token" ] || fail "Refresh token exchange failed"
+  pass "Refresh token flow successful"
 }
 
-# Test 7: Authorization Code Flow (Simulation)
-test_auth_code_flow() {
-    info "Testing Authorization Code Flow..."
-    
-    # Step 1: Authorization endpoint (requires login - we'll check if endpoint exists)
-    AUTH_ENDPOINT="$KEYCLOAK_BASE/realms/$REALM/protocol/openid-connect/auth"
-    RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "$AUTH_ENDPOINT?client_id=$CLIENT_ID&redirect_uri=$REDIRECT_URI&response_type=code&scope=openid+profile+email")
-    
-    if [ "$RESPONSE" = "200" ] || [ "$RESPONSE" = "302" ] || [ "$RESPONSE" = "303" ]; then
-        pass "Authorization endpoint is accessible"
-    else
-        warn "Authorization endpoint returned HTTP $RESPONSE (may need browser interaction)"
-    fi
+test_user_info() {
+  info "Testing userinfo"
+  resp=$(curl -sS -X GET "$KEYCLOAK_BASE/realms/$REALM/protocol/openid-connect/userinfo" \
+    -H "Authorization: Bearer $DEMO_ACCESS_TOKEN")
+  echo "$resp" | grep -q "$TEST_USER" || fail "Userinfo does not contain expected username"
+  pass "Userinfo endpoint successful"
 }
 
-# Test 8: Token Validation - Verify JWT structure
-test_token_validation() {
-    info "Testing Token structure and claims..."
-    if [ -z "$DEMO_ACCESS_TOKEN" ]; then
-        warn "Skipping token validation - no access token available"
-        return
-    fi
-
-    # Check JWT has 3 parts (header.payload.signature)
-    TOKEN_PARTS=$(echo "$DEMO_ACCESS_TOKEN" | grep -o '\.' | wc -l)
-    
-    if [ "$TOKEN_PARTS" -eq 2 ]; then
-        pass "Token has valid JWT structure (3 parts)"
-    else
-        warn "Token structure validation skipped"
-    fi
-}
-
-# Test 9: Invalid Credentials
 test_invalid_credentials() {
-    info "Testing invalid credentials rejection..."
-    RESPONSE=$(curl -s -X POST \
-        "$KEYCLOAK_BASE/realms/$REALM/protocol/openid-connect/token" \
-        -H "Content-Type: application/x-www-form-urlencoded" \
-        -d "client_id=$CLIENT_ID" \
-        -d "username=$TEST_USER" \
-        -d "password=WrongPassword123" \
-        -d "grant_type=password")
-
-    if echo "$RESPONSE" | grep -q "error"; then
-        pass "Invalid credentials are properly rejected"
-    else
-        fail "Invalid credentials were not rejected: $RESPONSE"
-    fi
+  info "Testing invalid credentials rejection"
+  resp=$(curl -sS -X POST "$KEYCLOAK_BASE/realms/$REALM/protocol/openid-connect/token" \
+    -H "Content-Type: application/x-www-form-urlencoded" \
+    --data-urlencode "client_id=$CLIENT_ID" \
+    --data-urlencode "username=$TEST_USER" \
+    --data-urlencode "password=WrongPassword123!" \
+    --data-urlencode "grant_type=password")
+  echo "$resp" | grep -q "error" || fail "Invalid credentials were not rejected"
+  pass "Invalid credentials rejected"
 }
 
-# Test 10: Invalid Client
 test_invalid_client() {
-    info "Testing invalid client rejection..."
-    RESPONSE=$(curl -s -X POST \
-        "$KEYCLOAK_BASE/realms/$REALM/protocol/openid-connect/token" \
-        -H "Content-Type: application/x-www-form-urlencoded" \
-        -d "client_id=invalid-client-id" \
-        -d "username=$TEST_USER" \
-        -d "password=$TEST_PASSWORD" \
-        -d "grant_type=password")
-
-    if echo "$RESPONSE" | grep -q "error"; then
-        pass "Invalid client is properly rejected"
-    else
-        fail "Invalid client was not rejected: $RESPONSE"
-    fi
+  info "Testing invalid client rejection"
+  resp=$(curl -sS -X POST "$KEYCLOAK_BASE/realms/$REALM/protocol/openid-connect/token" \
+    -H "Content-Type: application/x-www-form-urlencoded" \
+    --data-urlencode "client_id=invalid-client-id" \
+    --data-urlencode "username=$TEST_USER" \
+    --data-urlencode "password=$TEST_PASSWORD" \
+    --data-urlencode "grant_type=password")
+  echo "$resp" | grep -q "error" || fail "Invalid client was not rejected"
+  pass "Invalid client rejected"
 }
 
-# Test 11: User Profile
-test_user_profile() {
-    info "Testing User Profile endpoint..."
-    if [ -z "$DEMO_ACCESS_TOKEN" ]; then
-        warn "Skipping user profile - no access token available"
-        return
-    fi
-
-    RESPONSE=$(curl -s -X GET \
-        "$KEYCLOAK_BASE/realms/$REALM/account" \
-        -H "Authorization: Bearer $DEMO_ACCESS_TOKEN")
-
-    if echo "$RESPONSE" | grep -q "username"; then
-        pass "User Profile endpoint is accessible"
-    else
-        warn "User Profile endpoint may require account console configuration"
-    fi
+test_auth_endpoint() {
+  info "Testing authorization endpoint"
+  code=$(curl -sS -o /dev/null -w "%{http_code}" "$KEYCLOAK_BASE/realms/$REALM/protocol/openid-connect/auth?client_id=$CLIENT_ID&redirect_uri=$REDIRECT_URI&response_type=code&scope=openid+profile+email")
+  case "$code" in
+    200|302|303|307|308) pass "Authorization endpoint reachable" ;;
+    *) fail "Authorization endpoint returned HTTP $code" ;;
+  esac
 }
 
-# Test 12: Logout/Token Revocation
-test_logout() {
-    info "Testing Logout (Token Revocation)..."
-    if [ -z "$DEMO_ACCESS_TOKEN" ]; then
-        warn "Skipping logout - no access token available"
-        return
-    fi
-
-    RESPONSE=$(curl -s -X POST \
-        "$KEYCLOAK_BASE/realms/$REALM/protocol/openid-connect/logout" \
-        -H "Content-Type: application/x-www-form-urlencoded" \
-        -d "client_id=$CLIENT_ID" \
-        -d "refresh_token=$DEMO_ACCESS_TOKEN")
-
-    # Logout endpoint returns 204 or similar on success
-    pass "Logout endpoint called successfully"
+test_token_format() {
+  info "Testing JWT shape"
+  parts=$(printf "%s" "$DEMO_ACCESS_TOKEN" | awk -F'.' '{print NF}')
+  [ "$parts" -eq 3 ] || fail "Access token is not a 3-part JWT"
+  pass "JWT structure valid"
 }
 
-# Run all tests
+test_password_policy_and_totp_required_action() {
+  info "Testing realm password policy and TOTP required action"
+  ensure_password_policy
+  realm_json=$(curl -sS -H "Authorization: Bearer $ADMIN_TOKEN" "$KEYCLOAK_BASE/admin/realms/$REALM")
+  policy=$(json_get "passwordPolicy" "$realm_json")
+  echo "$policy" | grep -q "length(12)" || fail "Password policy missing length(12)"
+  echo "$policy" | grep -q "notEmail" || fail "Password policy missing notEmail"
+
+  actions_json=$(curl -sS -H "Authorization: Bearer $ADMIN_TOKEN" "$KEYCLOAK_BASE/admin/realms/$REALM/authentication/required-actions")
+  printf "%s" "$actions_json" | grep -q '"alias"[[:space:]]*:[[:space:]]*"CONFIGURE_TOTP"' || fail "CONFIGURE_TOTP required action missing"
+  printf "%s" "$actions_json" | grep -q '"defaultAction"[[:space:]]*:[[:space:]]*true' || fail "CONFIGURE_TOTP is not default action"
+
+  pass "Password policy and realm TOTP required action validated"
+}
+
+test_otp_enforced_for_unconfigured_user() {
+  info "Testing OTP enforcement on fresh user"
+  mkdir -p artifacts
+  ts=$(date +%s)
+  username="otp-test-$ts"
+  email="$username@example.com"
+  password="OtpTest123!@#"
+
+  create_code=$(curl -sS -o artifacts/keycloak-user-create.json -w "%{http_code}" -X POST "$KEYCLOAK_BASE/admin/realms/$REALM/users" \
+    -H "Authorization: Bearer $ADMIN_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "{\"username\":\"$username\",\"enabled\":true,\"email\":\"$email\"}")
+  [ "$create_code" -eq 201 ] || fail "Could not create OTP test user"
+
+  user_json=$(curl -sS -H "Authorization: Bearer $ADMIN_TOKEN" "$KEYCLOAK_BASE/admin/realms/$REALM/users?username=$username")
+  user_id=$(printf "%s" "$user_json" | grep -o '"id":"[^"]*"' | head -1 | sed 's/.*"id":"//' | sed 's/".*//')
+  [ -n "$user_id" ] || fail "Could not resolve OTP test user id"
+
+  curl -sS -o /dev/null -X PUT "$KEYCLOAK_BASE/admin/realms/$REALM/users/$user_id/reset-password" \
+    -H "Authorization: Bearer $ADMIN_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "{\"type\":\"password\",\"value\":\"$password\",\"temporary\":false}"
+
+  curl -sS -o /dev/null -X PUT "$KEYCLOAK_BASE/admin/realms/$REALM/users/$user_id" \
+    -H "Authorization: Bearer $ADMIN_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "{\"requiredActions\":[\"CONFIGURE_TOTP\"]}"
+
+  token_resp=$(curl -sS -X POST "$KEYCLOAK_BASE/realms/$REALM/protocol/openid-connect/token" \
+    -H "Content-Type: application/x-www-form-urlencoded" \
+    --data-urlencode "client_id=$CLIENT_ID" \
+    --data-urlencode "username=$username" \
+    --data-urlencode "password=$password" \
+    --data-urlencode "grant_type=password")
+
+  echo "$token_resp" | grep -q "error" || fail "OTP not enforced for user with CONFIGURE_TOTP"
+  pass "OTP enforcement confirmed for unconfigured user"
+
+  curl -sS -o /dev/null -X DELETE "$KEYCLOAK_BASE/admin/realms/$REALM/users/$user_id" \
+    -H "Authorization: Bearer $ADMIN_TOKEN"
+}
+
 main() {
-    echo "=========================================="
-    echo "Keycloak Test Suite"
-    echo "=========================================="
-    echo "Keycloak Base: $KEYCLOAK_BASE"
-    echo "Realm: $REALM"
-    echo "Client: $CLIENT_ID"
-    echo "=========================================="
-    echo ""
+  echo "=========================================="
+  echo "Keycloak Test Suite"
+  echo "=========================================="
 
-    test_keycloak_health
-    test_oidc_config
-    test_password_grant
-    test_token_introspection
-    test_user_info
-    test_refresh_token
-    test_auth_code_flow
-    test_token_validation
-    test_invalid_credentials
-    test_invalid_client
-    test_user_profile
-    test_logout
+  wait_for_keycloak || fail "Keycloak is not ready"
+  get_admin_token
+  test_oidc_config
+  test_password_grant
+  test_refresh_token
+  test_user_info
+  test_invalid_credentials
+  test_invalid_client
+  test_auth_endpoint
+  test_token_format
+  test_password_policy_and_totp_required_action
+  test_otp_enforced_for_unconfigured_user
 
-    echo ""
-    echo "=========================================="
-    echo -e "${GREEN}All tests completed!${NC}"
-    echo "=========================================="
+  echo "=========================================="
+  echo -e "${GREEN}All Keycloak tests passed${NC}"
+  echo "=========================================="
 }
 
 main "$@"

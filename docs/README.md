@@ -186,7 +186,22 @@ Error responses follow:
 
 - OpenAPI: `docs/openapi-user-service.yaml`
 - Postman collection: `docs/collections/can-bank-x.postman_collection.json`
+- Full KrakenD+OTP collection: `docs/collections/can-bank-x.krakend-full.postman_collection.json`
 - Postman local env: `docs/collections/can-bank-x.local.postman_environment.json`
+
+## Keycloak + KrakenD Full Test Commands
+
+Run everything with restart included:
+
+- `sh infra/tests/run-security-gateway-tests.sh`
+
+Run only Keycloak tests:
+
+- `sh infra/tests/keycloak-tests.sh`
+
+Run only KrakenD endpoint coverage tests (every endpoint in `gateway/krakend.json`):
+
+- `sh infra/tests/krakend-endpoints-tests.sh`
 
 ## SQL assertion tests
 

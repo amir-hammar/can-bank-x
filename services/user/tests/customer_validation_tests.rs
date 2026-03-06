@@ -7,12 +7,12 @@ fn sample_request() -> RegisterRequest {
     RegisterRequest {
         email: "User@Example.com".to_string(),
         full_name: "Jane Doe".to_string(),
-        street: "123 Main".to_string(),
+        street: "123   Main".to_string(),
         city: "Montreal".to_string(),
         province: "qc".to_string(),
-        postal_code: "h2x1z5".to_string(),
+        postal_code: "h2x-1z5".to_string(),
         country: "Canada".to_string(),
-        nas: "123456789".to_string(),
+        nas: "123 456 789".to_string(),
     }
 }
 
@@ -38,5 +38,15 @@ fn normalize_payload() {
 
     assert_eq!(normalized.email, "user@example.com");
     assert_eq!(normalized.province, "QC");
-    assert_eq!(normalized.postal_code, "H2X1Z5");
+    assert_eq!(normalized.street, "123 Main");
+    assert_eq!(normalized.postal_code, "H2X 1Z5");
+    assert_eq!(normalized.nas, "123456789");
+}
+
+#[test]
+fn reject_invalid_full_name() {
+    let mut payload = sample_request();
+    payload.full_name = "123456".to_string();
+
+    assert!(validate_register_request(&payload).is_err());
 }

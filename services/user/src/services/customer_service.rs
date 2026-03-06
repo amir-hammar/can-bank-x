@@ -113,8 +113,8 @@ fn map_sqlx_insert_error(error: sqlx::Error) -> ServiceError {
         if let Some(code) = database_error.code() {
             if code == "23505" {
                 return ServiceError::conflict(
-                    "Customer already exists",
-                    vec!["email or keycloak subject already registered".to_string()],
+                    "Registration failed",
+                    vec!["registration request could not be completed".to_string()],
                 );
             }
         }

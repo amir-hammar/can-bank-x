@@ -42,6 +42,9 @@ services:
     environment:
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_HOSTNAME: localhost:8082
+      KC_PROXY_HEADERS: xforwarded
+      KC_HOSTNAME_STRICT: "false"
       KC_SPI_THEME_STATIC_MAX_AGE: "-1"
       KC_SPI_THEME_CACHE_THEMES: "false"
     ports:
@@ -74,47 +77,47 @@ services:
     networks:
       - can-bank-x-network
 
-  account-service:
-    build:
-      context: ./services/account
-      dockerfile: Dockerfile
-    container_name: account-service
-    env_file:
-      - .env
-    environment:
-      DATABASE_URL: ${ACCOUNT_SERVICE_DATABASE_URL}
-    depends_on:
-      postgres:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
-      interval: 10s
-      timeout: 3s
-      retries: 10
-      start_period: 5s
-    networks:
-      - can-bank-x-network
+  # account-service:
+  #   build:
+  #     context: ./services/account
+  #     dockerfile: Dockerfile
+  #   container_name: account-service
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     DATABASE_URL: ${ACCOUNT_SERVICE_DATABASE_URL}
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+  #     interval: 10s
+  #     timeout: 3s
+  #     retries: 10
+  #     start_period: 5s
+  #   networks:
+  #     - can-bank-x-network
 
-  transfer-service:
-    build:
-      context: ./services/transfer
-      dockerfile: Dockerfile
-    container_name: transfer-service
-    env_file:
-      - .env
-    environment:
-      DATABASE_URL: ${TRANSFER_SERVICE_DATABASE_URL}
-    depends_on:
-      postgres:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
-      interval: 10s
-      timeout: 3s
-      retries: 10
-      start_period: 5s
-    networks:
-      - can-bank-x-network
+  # transfer-service:
+  #   build:
+  #     context: ./services/transfer
+  #     dockerfile: Dockerfile
+  #   container_name: transfer-service
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     DATABASE_URL: ${TRANSFER_SERVICE_DATABASE_URL}
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+  #     interval: 10s
+  #     timeout: 3s
+  #     retries: 10
+  #     start_period: 5s
+  #   networks:
+  #     - can-bank-x-network
 
   api-gateway:
     build:
