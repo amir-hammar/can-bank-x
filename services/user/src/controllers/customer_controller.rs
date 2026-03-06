@@ -7,10 +7,7 @@ use axum::{
 
 use crate::{
     controllers::request_context::{get_auth_identity, get_trace_id},
-    models::{
-        domain::AppState,
-        dto::error_dto::ErrorResponse,
-    },
+    models::{domain::AppState, dto::error_dto::ErrorResponse},
     services::{customer_service, ServiceError},
 };
 

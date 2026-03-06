@@ -265,10 +265,7 @@ fn map_sqlx_insert_error(error: sqlx::Error) -> ServiceError {
                     None => vec!["registration request could not be completed".to_string()],
                 };
 
-                return ServiceError::conflict(
-                    "Registration failed",
-                    details,
-                );
+                return ServiceError::conflict("Registration failed", details);
             }
         }
     }
@@ -286,11 +283,17 @@ fn mask_nas(nas: &str) -> String {
 }
 
 fn compact_nas(value: &str) -> String {
-    value.chars().filter(|ch| ch.is_ascii_digit()).collect::<String>()
+    value
+        .chars()
+        .filter(|ch| ch.is_ascii_digit())
+        .collect::<String>()
 }
 
 fn resolve_username(identity: &AuthIdentity) -> String {
-    let fallback_username = format!("user_{}", &identity.sub.chars().take(12).collect::<String>());
+    let fallback_username = format!(
+        "user_{}",
+        &identity.sub.chars().take(12).collect::<String>()
+    );
     identity
         .username
         .as_deref()
@@ -300,7 +303,10 @@ fn resolve_username(identity: &AuthIdentity) -> String {
 }
 
 fn resolve_email(identity: &AuthIdentity) -> String {
-    let fallback_email = format!("{}@canbankx.local", &identity.sub.chars().take(12).collect::<String>());
+    let fallback_email = format!(
+        "{}@canbankx.local",
+        &identity.sub.chars().take(12).collect::<String>()
+    );
     identity
         .email
         .as_deref()

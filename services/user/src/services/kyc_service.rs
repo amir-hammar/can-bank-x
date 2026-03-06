@@ -153,7 +153,10 @@ pub async fn kyc_status(
     let customer = match customer {
         Some(c) => c,
         None => {
-            crate::services::customer_service::register_customer_from_identity(pool, identity, trace_id).await?;
+            crate::services::customer_service::register_customer_from_identity(
+                pool, identity, trace_id,
+            )
+            .await?;
             customer_repository::get_customer_with_profile_by_sub(pool, &identity.sub)
                 .await
                 .map_err(|_| ServiceError::internal("Could not fetch customer"))?

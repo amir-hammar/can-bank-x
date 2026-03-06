@@ -60,13 +60,8 @@ pub async fn kyc_status(State(state): State<AppState>, headers: HeaderMap) -> im
         Err(error) => return map_error(error, &trace_id),
     };
 
-    match kyc_service::kyc_status(
-        &state.pool,
-        &identity,
-        &state.kyc_mock_data_path,
-        &trace_id,
-    )
-    .await
+    match kyc_service::kyc_status(&state.pool, &identity, &state.kyc_mock_data_path, &trace_id)
+        .await
     {
         Ok(response) => (StatusCode::OK, Json(response)).into_response(),
         Err(error) => map_error(error, &trace_id),

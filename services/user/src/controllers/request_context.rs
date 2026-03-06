@@ -65,7 +65,12 @@ pub fn get_auth_identity(headers: &HeaderMap) -> Result<AuthIdentity, ServiceErr
         .get("x-user-name")
         .and_then(|value| value.to_str().ok())
         .map(|value| value.to_string())
-        .or_else(|| headers.get("x-user-full-name").and_then(|value| value.to_str().ok()).map(|value| value.to_string()))
+        .or_else(|| {
+            headers
+                .get("x-user-full-name")
+                .and_then(|value| value.to_str().ok())
+                .map(|value| value.to_string())
+        })
         .or_else(|| get_claim_str(&claims, "fullName"))
         .or_else(|| get_claim_str(&claims, "name"))
         .or_else(|| {
@@ -104,10 +109,14 @@ pub fn get_auth_identity(headers: &HeaderMap) -> Result<AuthIdentity, ServiceErr
         .get("x-user-postal-code")
         .and_then(|value| value.to_str().ok())
         .map(|value| value.to_string())
-        .or_else(|| headers.get("x-user-postalcode").and_then(|value| value.to_str().ok()).map(|value| value.to_string()))
+        .or_else(|| {
+            headers
+                .get("x-user-postalcode")
+                .and_then(|value| value.to_str().ok())
+                .map(|value| value.to_string())
+        })
         .or_else(|| get_claim_str(&claims, "postalCode"))
-        .or_else(|| get_claim_nested_str(&claims, "address", "postalCode"))
-        ;
+        .or_else(|| get_claim_nested_str(&claims, "address", "postalCode"));
 
     let country = headers
         .get("x-user-country")
