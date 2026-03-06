@@ -25,7 +25,14 @@ pub async fn register(
         Err(error) => return map_error(error, &trace_id),
     };
 
-    match customer_service::register_customer(&state.pool, &keycloak_sub, payload, &trace_id).await
+    match customer_service::register_customer(
+        &state.pool,
+        &keycloak_sub,
+        payload,
+        &state.kyc_mock_data_path,
+        &trace_id,
+    )
+    .await
     {
         Ok(response) => (StatusCode::CREATED, Json(response)).into_response(),
         Err(error) => map_error(error, &trace_id),
@@ -40,7 +47,14 @@ pub async fn me(State(state): State<AppState>, headers: HeaderMap) -> impl IntoR
         Err(error) => return map_error(error, &trace_id),
     };
 
-    match customer_service::customer_me(&state.pool, &keycloak_sub).await {
+    match customer_service::customer_me(
+        &state.pool,
+        &keycloak_sub,
+        &state.kyc_mock_data_path,
+        &trace_id,
+    )
+    .await
+    {
         Ok(response) => (StatusCode::OK, Json(response)).into_response(),
         Err(error) => map_error(error, &trace_id),
     }

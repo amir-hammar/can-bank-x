@@ -21,7 +21,9 @@ pub async fn submit_kyc(State(state): State<AppState>, headers: HeaderMap) -> im
         Err(error) => return map_error(error, &trace_id),
     };
 
-    match kyc_service::submit_kyc(&state.pool, &keycloak_sub, &trace_id).await {
+    match kyc_service::submit_kyc(&state.pool, &keycloak_sub, &state.kyc_mock_data_path, &trace_id)
+        .await
+    {
         Ok(response) => (StatusCode::ACCEPTED, Json(response)).into_response(),
         Err(error) => map_error(error, &trace_id),
     }
@@ -53,7 +55,14 @@ pub async fn kyc_status(State(state): State<AppState>, headers: HeaderMap) -> im
         Err(error) => return map_error(error, &trace_id),
     };
 
-    match kyc_service::kyc_status(&state.pool, &keycloak_sub).await {
+    match kyc_service::kyc_status(
+        &state.pool,
+        &keycloak_sub,
+        &state.kyc_mock_data_path,
+        &trace_id,
+    )
+    .await
+    {
         Ok(response) => (StatusCode::OK, Json(response)).into_response(),
         Err(error) => map_error(error, &trace_id),
     }

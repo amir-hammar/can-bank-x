@@ -16,7 +16,7 @@ KEYCLOAK_BASE="${KEYCLOAK_BASE:-http://localhost:8082}"
 REALM="${REALM:-can-bank-x}"
 CLIENT_ID="${CLIENT_ID:-can-bank-x-api}"
 TEST_USER="${TEST_USER:-demo.customer}"
-TEST_PASSWORD="${TEST_PASSWORD:-Passw0rd!}"
+TEST_PASSWORD="${TEST_PASSWORD:-Passw0rd!123}"
 
 wait_for() {
   url="$1"
@@ -154,13 +154,12 @@ done | tee -a "$LOG_FILE" | while read result; do
 done
 
 # Count totals from log file since subshell variables don't persist
-echo "" | tee -a "$LOG_FILE"
-TOTAL=$(grep -c "^PASS\|^FAIL" "$LOG_FILE" 2>/dev/null || echo "0")
-FAILED=$(grep -c "^FAIL" "$LOG_FILE" 2>/dev/null || echo "0")
+TOTAL=$(awk '/^(PASS|FAIL)/ { count++ } END { print count + 0 }' "$LOG_FILE")
+FAILED=$(awk '/^FAIL/ { count++ } END { print count + 0 }' "$LOG_FILE")
 
 echo "Checked $TOTAL KrakenD endpoints" | tee -a "$LOG_FILE"
 
-if [ "$FAILED" != "0" ] && [ -n "$FAILED" ]; then
+if [ "$FAILED" -gt 0 ]; then
   echo "$FAILED endpoint checks failed" | tee -a "$LOG_FILE"
   exit 1
 fi

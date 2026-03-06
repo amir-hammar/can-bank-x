@@ -17,7 +17,29 @@ scrape_configs:
       - targets: ["transfer-service:8080"]
     metrics_path: /metrics
 
+  - job_name: keycloak
+    static_configs:
+      - targets: ["keycloak:9000"]
+    metrics_path: /metrics
+
+  - job_name: api-gateway
+    static_configs:
+      - targets: ["api-gateway:8080"]
+    metrics_path: /metrics
+
+  - job_name: postgres
+    static_configs:
+      - targets: ["postgres-exporter:9187"]
+
   - job_name: api-gateway-health
     static_configs:
       - targets: ["api-gateway:8080"]
     metrics_path: /__health
+
+  - job_name: node-exporter
+    static_configs:
+      - targets: ["node-exporter:9100"]
+
+  - job_name: cadvisor
+    static_configs:
+      - targets: ["cadvisor:8080"]

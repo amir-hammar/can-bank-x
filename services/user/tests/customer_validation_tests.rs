@@ -5,6 +5,7 @@ use user_service::{
 
 fn sample_request() -> RegisterRequest {
     RegisterRequest {
+        username: "demo.customer".to_string(),
         email: "User@Example.com".to_string(),
         full_name: "Jane Doe".to_string(),
         street: "123   Main".to_string(),
@@ -25,6 +26,14 @@ fn reject_invalid_email() {
 }
 
 #[test]
+fn reject_invalid_username() {
+    let mut payload = sample_request();
+    payload.username = "___".to_string();
+
+    assert!(validate_register_request(&payload).is_err());
+}
+
+#[test]
 fn accept_valid_payload() {
     let payload = sample_request();
 
@@ -36,6 +45,7 @@ fn normalize_payload() {
     let payload = sample_request();
     let normalized = normalize_register_request(&payload);
 
+    assert_eq!(normalized.username, "demo.customer");
     assert_eq!(normalized.email, "user@example.com");
     assert_eq!(normalized.province, "QC");
     assert_eq!(normalized.street, "123 Main");

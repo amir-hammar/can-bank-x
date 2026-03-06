@@ -3,6 +3,7 @@ use regex::Regex;
 
 pub fn validate_register_request(payload: &RegisterRequest) -> Result<Vec<String>, Vec<String>> {
     let mut details: Vec<String> = Vec::new();
+    let username = payload.username.trim();
     let email = payload.email.trim();
     let full_name = normalize_spaces(&payload.full_name);
     let street = normalize_spaces(&payload.street);
@@ -11,6 +12,10 @@ pub fn validate_register_request(payload: &RegisterRequest) -> Result<Vec<String
     let country = normalize_spaces(&payload.country);
     let postal_compact = compact_postal_code(&payload.postal_code);
     let nas_digits = compact_nas(&payload.nas);
+
+    if username.is_empty() || username.len() > 254 || !username.chars().any(|ch| ch.is_ascii_alphanumeric()) {
+        details.push("username is invalid (1-254 chars and must include at least one alphanumeric character)".to_string());
+    }
 
     let email_regex = Regex::new(r"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$").expect("email regex");
     if email.is_empty() || email.len() > 254 || !email_regex.is_match(email) {
@@ -69,6 +74,7 @@ pub fn normalize_register_request(payload: &RegisterRequest) -> RegisterRequest 
     };
 
     RegisterRequest {
+        username: payload.username.trim().to_lowercase(),
         email: payload.email.trim().to_lowercase(),
         full_name: normalize_spaces(&payload.full_name),
         street: normalize_spaces(&payload.street),

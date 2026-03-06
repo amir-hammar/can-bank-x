@@ -127,6 +127,19 @@ jobs:
       - name: Run seed migrations
         run: docker compose run --rm --no-deps seed
 
+      - name: Wait for keycloak readiness
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS "http://localhost:8082/realms/can-bank-x/.well-known/openid-configuration" >/dev/null 2>&1; then
+              echo "Keycloak is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Keycloak did not become ready in time"
+          docker compose logs keycloak || true
+          exit 1
+
       - name: Start app services
         run: |
           docker compose up -d --build --no-deps user-service api-gateway

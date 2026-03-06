@@ -3,6 +3,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE TABLE IF NOT EXISTS customers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     keycloak_sub TEXT NOT NULL UNIQUE,
+    username TEXT NOT NULL UNIQUE,
     email TEXT NOT NULL UNIQUE,
     status TEXT NOT NULL CHECK (status IN ('PENDING', 'ACTIVE')),
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),

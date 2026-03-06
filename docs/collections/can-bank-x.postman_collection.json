@@ -1,17 +1,17 @@
 {
   "info": {
-    "name": "can-bank-x API",
+    "name": "CanBankX",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     {
-      "key": "keycloak_base",
-      "value": "http://localhost:8082",
+      "key": "gateway_base",
+      "value": "http://localhost:8080",
       "type": "string"
     },
     {
-      "key": "gateway_base",
-      "value": "http://localhost:8080",
+      "key": "keycloak_base",
+      "value": "http://localhost:8082",
       "type": "string"
     },
     {
@@ -25,6 +25,26 @@
       "type": "string"
     },
     {
+      "key": "keycloak_admin",
+      "value": "admin",
+      "type": "string"
+    },
+    {
+      "key": "keycloak_admin_password",
+      "value": "admin_password",
+      "type": "string"
+    },
+    {
+      "key": "username",
+      "value": "demo.customer",
+      "type": "string"
+    },
+    {
+      "key": "password",
+      "value": "Passw0rd!123",
+      "type": "string"
+    },
+    {
       "key": "access_token",
       "value": "",
       "type": "string"
@@ -33,311 +53,430 @@
       "key": "refresh_token",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "admin_token",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
     {
-      "name": "Keycloak",
+      "name": "End-to-End",
       "item": [
         {
-          "name": "OIDC Configuration",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": "{{keycloak_base}}/realms/{{realm}}/.well-known/openid-configuration"
-          }
-        },
-        {
-          "name": "Get Token (Password Grant)",
-          "event": [
+          "name": "01 - Keycloak Setup",
+          "item": [
             {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "if (pm.response.code === 200) {",
-                  "  var jsonData = pm.response.json();",
-                  "  pm.environment.set('access_token', jsonData.access_token);",
-                  "  pm.environment.set('refresh_token', jsonData.refresh_token);",
-                  "}"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/x-www-form-urlencoded"
-              }
-            ],
-            "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
+              "name": "Get Admin Token",
+              "event": [
                 {
-                  "key": "client_id",
-                  "value": "{{client_id}}"
-                },
-                {
-                  "key": "username",
-                  "value": "demo.customer"
-                },
-                {
-                  "key": "password",
-                  "value": "Passw0rd!"
-                },
-                {
-                  "key": "grant_type",
-                  "value": "password"
-                },
-                {
-                  "key": "scope",
-                  "value": "openid profile email"
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "  const jsonData = pm.response.json();",
+                      "  pm.collectionVariables.set('admin_token', jsonData.access_token || '');",
+                      "}",
+                      "pm.test('admin token request success', function () { pm.expect(pm.response.code).to.eql(200); });"
+                    ]
+                  }
                 }
-              ]
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/x-www-form-urlencoded"
+                  }
+                ],
+                "body": {
+                  "mode": "urlencoded",
+                  "urlencoded": [
+                    {
+                      "key": "client_id",
+                      "value": "admin-cli"
+                    },
+                    {
+                      "key": "grant_type",
+                      "value": "password"
+                    },
+                    {
+                      "key": "username",
+                      "value": "{{keycloak_admin}}"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{keycloak_admin_password}}"
+                    }
+                  ]
+                },
+                "url": "{{keycloak_base}}/realms/master/protocol/openid-connect/token"
+              }
             },
-            "url": "{{keycloak_base}}/realms/{{realm}}/protocol/openid-connect/token"
-          }
-        },
-        {
-          "name": "Refresh Token",
-          "event": [
             {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "if (pm.response.code === 200) {",
-                  "  var jsonData = pm.response.json();",
-                  "  pm.environment.set('access_token', jsonData.access_token);",
-                  "}"
-                ]
+              "name": "Validate Password Policy",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('realm fetch success', function () { pm.expect(pm.response.code).to.eql(200); });",
+                      "const data = pm.response.json();",
+                      "const policy = data.passwordPolicy || '';",
+                      "pm.test('has length(12)', function () { pm.expect(policy).to.include('length(12)'); });",
+                      "pm.test('has notEmail', function () { pm.expect(policy).to.include('notEmail'); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "url": "{{keycloak_base}}/admin/realms/{{realm}}"
+              }
+            },
+            {
+              "name": "Validate CONFIGURE_TOTP Required Action",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('required actions fetch success', function () { pm.expect(pm.response.code).to.eql(200); });",
+                      "const actions = pm.response.json();",
+                      "const target = actions.find(a => a.alias === 'CONFIGURE_TOTP');",
+                      "pm.test('CONFIGURE_TOTP exists', function () { pm.expect(!!target).to.eql(true); });",
+                      "pm.test('CONFIGURE_TOTP default action', function () { pm.expect(target.defaultAction).to.eql(true); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "url": "{{keycloak_base}}/admin/realms/{{realm}}/authentication/required-actions"
+              }
+            },
+            {
+              "name": "Get User Token",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "  const jsonData = pm.response.json();",
+                      "  pm.collectionVariables.set('access_token', jsonData.access_token || '');",
+                      "  pm.collectionVariables.set('refresh_token', jsonData.refresh_token || '');",
+                      "}",
+                      "pm.test('user token request success', function () { pm.expect(pm.response.code).to.eql(200); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/x-www-form-urlencoded"
+                  }
+                ],
+                "body": {
+                  "mode": "urlencoded",
+                  "urlencoded": [
+                    {
+                      "key": "client_id",
+                      "value": "{{client_id}}"
+                    },
+                    {
+                      "key": "grant_type",
+                      "value": "password"
+                    },
+                    {
+                      "key": "username",
+                      "value": "{{username}}"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{password}}"
+                    },
+                    {
+                      "key": "scope",
+                      "value": "openid profile email"
+                    }
+                  ]
+                },
+                "url": "{{keycloak_base}}/realms/{{realm}}/protocol/openid-connect/token"
+              }
+            },
+            {
+              "name": "Logout User Session",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/x-www-form-urlencoded"
+                  }
+                ],
+                "body": {
+                  "mode": "urlencoded",
+                  "urlencoded": [
+                    {
+                      "key": "client_id",
+                      "value": "{{client_id}}"
+                    },
+                    {
+                      "key": "refresh_token",
+                      "value": "{{refresh_token}}"
+                    }
+                  ]
+                },
+                "url": "{{gateway_base}}/auth/realms/{{realm}}/protocol/openid-connect/logout"
               }
             }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/x-www-form-urlencoded"
+          ]
+        },
+        {
+          "name": "02 - Keycloak via Gateway",
+          "item": [
+            {
+              "name": "GET /realms/.../auth",
+              "request": {
+                "method": "GET",
+                "url": "{{gateway_base}}/realms/{{realm}}/protocol/openid-connect/auth?client_id={{client_id}}&redirect_uri=http://localhost:8083/callback&response_type=code&scope=openid+profile+email"
               }
-            ],
-            "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                {
-                  "key": "client_id",
-                  "value": "{{client_id}}"
-                },
-                {
-                  "key": "grant_type",
-                  "value": "refresh_token"
-                },
-                {
-                  "key": "refresh_token",
-                  "value": "{{refresh_token}}"
-                }
-              ]
             },
-            "url": "{{keycloak_base}}/realms/{{realm}}/protocol/openid-connect/token"
-          }
-        },
-        {
-          "name": "User Info",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
+            {
+              "name": "GET /realms/.../registrations",
+              "request": {
+                "method": "GET",
+                "url": "{{gateway_base}}/realms/{{realm}}/protocol/openid-connect/registrations"
               }
-            ],
-            "url": "{{keycloak_base}}/realms/{{realm}}/protocol/openid-connect/userinfo"
-          }
-        },
-        {
-          "name": "Token Introspection",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/x-www-form-urlencoded"
-              }
-            ],
-            "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                {
-                  "key": "client_id",
-                  "value": "{{client_id}}"
-                },
-                {
-                  "key": "token",
-                  "value": "{{access_token}}"
-                }
-              ]
             },
-            "url": "{{keycloak_base}}/realms/{{realm}}/protocol/openid-connect/token/introspect"
-          }
-        },
-        {
-          "name": "Authorize (Code Flow)",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{keycloak_base}}/realms/{{realm}}/protocol/openid-connect/auth?client_id={{client_id}}&redirect_uri=http://localhost:8083/callback&response_type=code&scope=openid+profile+email&state=xyz",
-              "protocol": "http",
-              "host": [
-                "localhost"
-              ],
-              "port": "8082",
-              "path": [
-                "realms",
-                "{{realm}}",
-                "protocol",
-                "openid-connect",
-                "auth"
-              ],
-              "query": [
-                {
-                  "key": "client_id",
-                  "value": "{{client_id}}"
+            {
+              "name": "GET /realms/.../login-actions/{path}",
+              "request": {
+                "method": "GET",
+                "url": "{{gateway_base}}/realms/{{realm}}/login-actions/authenticate"
+              }
+            },
+            {
+              "name": "POST /realms/.../login-actions/{path}",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}"
                 },
-                {
-                  "key": "redirect_uri",
-                  "value": "http://localhost:8083/callback"
+                "url": "{{gateway_base}}/realms/{{realm}}/login-actions/authenticate"
+              }
+            },
+            {
+              "name": "GET /resources/{a}/{b}/{c}/{d}/{e}",
+              "request": {
+                "method": "GET",
+                "url": "{{gateway_base}}/resources/can-bank-x/login/resources/js/canbankx-theme.js"
+              }
+            },
+            {
+              "name": "POST /auth/realms/.../token",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/x-www-form-urlencoded"
+                  }
+                ],
+                "body": {
+                  "mode": "urlencoded",
+                  "urlencoded": [
+                    {
+                      "key": "client_id",
+                      "value": "{{client_id}}"
+                    },
+                    {
+                      "key": "grant_type",
+                      "value": "password"
+                    },
+                    {
+                      "key": "username",
+                      "value": "{{username}}"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{password}}"
+                    }
+                  ]
                 },
-                {
-                  "key": "response_type",
-                  "value": "code"
-                },
-                {
-                  "key": "scope",
-                  "value": "openid profile email"
-                },
-                {
-                  "key": "state",
-                  "value": "xyz"
-                }
-              ]
+                "url": "{{gateway_base}}/auth/realms/{{realm}}/protocol/openid-connect/token"
+              }
             }
-          }
+          ]
         },
         {
-          "name": "Logout",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/x-www-form-urlencoded"
+          "name": "03 - User Service - Auth",
+          "item": [
+            {
+              "name": "GET /api/v1/auth/me",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": "{{gateway_base}}/api/v1/auth/me"
               }
-            ],
-            "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                {
-                  "key": "client_id",
-                  "value": "{{client_id}}"
+            }
+          ]
+        },
+        {
+          "name": "04 - User Service - Customers",
+          "item": [
+            {
+              "name": "POST /api/v1/customers/register",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"postman.gateway\",\n  \"email\": \"postman.gateway@example.com\",\n  \"full_name\": \"Postman Gateway\",\n  \"street\": \"100 Main\",\n  \"city\": \"Montreal\",\n  \"province\": \"QC\",\n  \"postal_code\": \"H2X 1Z5\",\n  \"country\": \"Canada\",\n  \"nas\": \"123456789\"\n}"
                 },
-                {
-                  "key": "refresh_token",
-                  "value": "{{refresh_token}}"
-                }
-              ]
+                "url": "{{gateway_base}}/api/v1/customers/register"
+              }
             },
-            "url": "{{keycloak_base}}/realms/{{realm}}/protocol/openid-connect/logout"
-          }
-        }
-      ]
-    },
-    {
-      "name": "API Endpoints",
-      "item": [
-        {
-          "name": "Auth Me",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{access_token}}" },
-              { "key": "X-Trace-Id", "value": "{{$guid}}" }
-            ],
-            "url": "{{gateway_base}}/api/v1/auth/me"
-          }
+            {
+              "name": "GET /api/v1/customers/{path}",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": "{{gateway_base}}/api/v1/customers/me"
+              }
+            }
+          ]
         },
         {
-          "name": "Register Customer",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{access_token}}" },
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "X-Trace-Id", "value": "{{$guid}}" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"demo.customer@example.com\",\n  \"full_name\": \"Demo Customer\",\n  \"street\": \"123 Main St\",\n  \"city\": \"Montreal\",\n  \"province\": \"QC\",\n  \"postal_code\": \"H2X1Z5\",\n  \"country\": \"Canada\",\n  \"nas\": \"123456789\"\n}"
+          "name": "05 - User Service - KYC",
+          "item": [
+            {
+              "name": "GET /api/v1/kyc/{path}",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": "{{gateway_base}}/api/v1/kyc/status"
+              }
+            }
+          ]
+        },
+        {
+          "name": "06 - Account Service",
+          "item": [
+            {
+              "name": "GET /api/v1/accounts/{path}",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": "{{gateway_base}}/api/v1/accounts/me"
+              }
+            }
+          ]
+        },
+        {
+          "name": "07 - Transfer Service",
+          "item": [
+            {
+              "name": "POST /api/v1/transfers/create",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"from_account_id\": \"00000000-0000-0000-0000-000000000001\",\n  \"to_account_id\": \"00000000-0000-0000-0000-000000000002\",\n  \"amount\": 1.00,\n  \"currency\": \"CAD\"\n}"
+                },
+                "url": "{{gateway_base}}/api/v1/transfers/create"
+              }
             },
-            "url": "{{gateway_base}}/api/v1/customers/register"
-          }
+            {
+              "name": "GET /api/v1/transfers/{path}",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": "{{gateway_base}}/api/v1/transfers/status"
+              }
+            }
+          ]
         },
         {
-          "name": "Customer Me",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{access_token}}" },
-              { "key": "X-Trace-Id", "value": "{{$guid}}" }
-            ],
-            "url": "{{gateway_base}}/api/v1/customers/me"
-          }
-        },
-        {
-          "name": "KYC Submit",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{access_token}}" },
-              { "key": "X-Trace-Id", "value": "{{$guid}}" }
-            ],
-            "url": "{{gateway_base}}/api/v1/kyc/submit"
-          }
-        },
-        {
-          "name": "KYC Confirm",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{access_token}}" },
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "X-Trace-Id", "value": "{{$guid}}" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"approved\": true\n}"
-            },
-            "url": "{{gateway_base}}/api/v1/kyc/confirm"
-          }
-        },
-        {
-          "name": "KYC Status",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{access_token}}" },
-              { "key": "X-Trace-Id", "value": "{{$guid}}" }
-            ],
-            "url": "{{gateway_base}}/api/v1/kyc/status"
-          }
-        },
-        {
-          "name": "Unauthorized Check",
-          "request": {
-            "method": "GET",
-            "url": "{{gateway_base}}/api/v1/customers/me"
-          }
+          "name": "08 - Gateway Health",
+          "item": [
+            {
+              "name": "GET /health",
+              "request": {
+                "method": "GET",
+                "url": "{{gateway_base}}/health"
+              }
+            }
+          ]
         }
       ]
     }

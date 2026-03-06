@@ -11,7 +11,10 @@ async fn health_endpoint_returns_ok() {
         .connect_lazy("postgres://user:pass@localhost:5432/db")
         .expect("lazy pool");
 
-    let app = create_router(AppState { pool });
+    let app = create_router(AppState {
+        pool,
+        kyc_mock_data_path: "mock-data/kyc/identity-mock.json".to_string(),
+    });
 
     let response = app
         .oneshot(
@@ -33,7 +36,10 @@ async fn customers_me_without_sub_returns_standard_unauthorized_error() {
         .connect_lazy("postgres://user:pass@localhost:5432/db")
         .expect("lazy pool");
 
-    let app = create_router(AppState { pool });
+    let app = create_router(AppState {
+        pool,
+        kyc_mock_data_path: "mock-data/kyc/identity-mock.json".to_string(),
+    });
 
     let response = app
         .oneshot(

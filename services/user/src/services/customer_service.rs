@@ -11,6 +11,7 @@ pub async fn register_customer(
     pool: &Pool<Postgres>,
     keycloak_sub: &str,
     payload: RegisterRequest,
+    _kyc_mock_data_path: &str,
     trace_id: &str,
 ) -> Result<RegisterResponse, ServiceError> {
     if let Err(details) = customer_validation::validate_register_request(&payload) {
@@ -75,16 +76,20 @@ pub async fn register_customer(
     Ok(RegisterResponse {
         status: "registered".to_string(),
         customer_id: customer_with_profile.customer.id,
+        username: customer_with_profile.customer.username,
         email: customer_with_profile.customer.email,
         full_name: customer_with_profile.profile.full_name,
         postal_code: customer_with_profile.profile.postal_code,
         nas_masked: mask_nas(&customer_with_profile.profile.nas),
+        kyc_status: "PENDING".to_string(),
     })
 }
 
 pub async fn customer_me(
     pool: &Pool<Postgres>,
     keycloak_sub: &str,
+    kyc_mock_data_path: &str,
+    trace_id: &str,
 ) -> Result<CustomerMeResponse, ServiceError> {
     let customer = customer_repository::get_customer_with_profile_by_sub(pool, keycloak_sub)
         .await
@@ -94,10 +99,22 @@ pub async fn customer_me(
         return Err(ServiceError::not_found("Customer profile not found"));
     };
 
+    let kyc = crate::services::kyc_service::resolve_kyc_status_for_customer(
+        pool,
+        &customer,
+        kyc_mock_data_path,
+        trace_id,
+    )
+    .await?;
+
     Ok(CustomerMeResponse {
         customer_id: customer.customer.id,
+        username: customer.customer.username,
         email: customer.customer.email,
         status: customer.customer.status,
+        kyc_status: kyc.status,
+        kyc_approved: kyc.approved,
+        kyc_decision_available_in_seconds: kyc.decision_available_in_seconds,
         full_name: customer.profile.full_name,
         street: customer.profile.street,
         city: customer.profile.city,

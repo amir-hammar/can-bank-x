@@ -3,11 +3,13 @@ WORKDIR /app
 
 COPY Cargo.toml Cargo.toml
 COPY src src
+COPY mock-data mock-data
 RUN cargo build --release
 
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates wget && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=builder /app/target/release/user-service /usr/local/bin/user-service
+COPY --from=builder /app/mock-data /app/mock-data
 EXPOSE 8080
 CMD ["user-service"]

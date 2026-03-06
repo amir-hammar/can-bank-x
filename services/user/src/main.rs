@@ -12,7 +12,13 @@ async fn main() {
         .await
         .expect("failed to connect to postgres");
 
-    let state = AppState { pool };
+    let kyc_mock_data_path = env::var("KYC_MOCK_DATA_PATH")
+        .unwrap_or_else(|_| "mock-data/kyc/identity-mock.json".to_string());
+
+    let state = AppState {
+        pool,
+        kyc_mock_data_path,
+    };
     let app = router::create_router(state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080")

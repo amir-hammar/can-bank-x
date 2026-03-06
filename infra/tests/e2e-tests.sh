@@ -60,7 +60,7 @@ TOKEN_STATUS=$(curl -s -o "$TOKEN_FILE" -w "%{http_code}" -X POST "$KEYCLOAK_TOK
   --data-urlencode "grant_type=password" \
   --data-urlencode "client_id=can-bank-x-api" \
   --data-urlencode "username=demo.customer" \
-  --data-urlencode "password=Passw0rd!" || true)
+  --data-urlencode "password=Passw0rd!123" || true)
 if [ "$TOKEN_STATUS" -ne 200 ]; then
   echo "Token request failed with status ${TOKEN_STATUS}" | tee -a "$LOG_FILE"
   cat "$TOKEN_FILE" | tee -a "$LOG_FILE"
@@ -75,15 +75,19 @@ if [ -z "$ACCESS_TOKEN" ]; then
 fi
 
 echo "E2E: registration flow" | tee -a "$LOG_FILE"
-EMAIL="ci.$(date +%s)@example.com"
+EMAIL="ci.$(date +%s%N 2>/dev/null || date +%s).$$@example.com"
 REG_STATUS=$(curl -s -o "$REG_FILE" -w "%{http_code}" -X POST http://localhost:8080/api/v1/customers/register \
   -H "Authorization: Bearer ${ACCESS_TOKEN}" \
   -H "Content-Type: application/json" \
   -d "{\"email\":\"${EMAIL}\",\"full_name\":\"CI Customer\",\"street\":\"123 Main St\",\"city\":\"Montreal\",\"province\":\"QC\",\"postal_code\":\"H2X1Z5\",\"country\":\"Canada\",\"nas\":\"123456789\"}")
 if [ "$REG_STATUS" -ne 201 ]; then
-  echo "Registration flow failed with status ${REG_STATUS}" | tee -a "$LOG_FILE"
-  cat "$REG_FILE" | tee -a "$LOG_FILE"
-  exit 1
+  if [ "$REG_STATUS" -eq 409 ]; then
+    echo "Registration already exists for this user; continuing E2E flow" | tee -a "$LOG_FILE"
+  else
+    echo "Registration flow failed with status ${REG_STATUS}" | tee -a "$LOG_FILE"
+    cat "$REG_FILE" | tee -a "$LOG_FILE"
+    exit 1
+  fi
 fi
 
 # Next iteration: add transfer flow E2E

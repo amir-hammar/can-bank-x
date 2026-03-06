@@ -12,12 +12,13 @@ pub async fn insert_customer_with_profile(
 ) -> Result<CustomerWithProfile, sqlx::Error> {
     let customer = sqlx::query_as::<_, Customer>(
         r#"
-        INSERT INTO customers (keycloak_sub, email, status)
-        VALUES ($1, $2, 'PENDING')
-        RETURNING id::text, keycloak_sub, email, status, created_at, updated_at
+        INSERT INTO customers (keycloak_sub, username, email, status)
+        VALUES ($1, $2, $3, 'PENDING')
+        RETURNING id::text, keycloak_sub, username, email, status, created_at, updated_at
         "#,
     )
     .bind(keycloak_sub)
+    .bind(&payload.username)
     .bind(&payload.email)
     .fetch_one(&mut **tx)
     .await?;
@@ -49,7 +50,7 @@ pub async fn get_customer_with_profile_by_sub(
 ) -> Result<Option<CustomerWithProfile>, sqlx::Error> {
     let row = sqlx::query_as::<_, Customer>(
         r#"
-        SELECT id::text, keycloak_sub, email, status, created_at, updated_at
+        SELECT id::text, keycloak_sub, username, email, status, created_at, updated_at
         FROM customers
         WHERE keycloak_sub = $1
         "#,

@@ -29,13 +29,13 @@ sh infra/tests/keycloak-tests.sh
 
 Use the new collection for OTP and full gateway coverage:
 
-- `docs/collections/can-bank-x.krakend-full.postman_collection.json`
+- `docs/collections/can-bank-x.postman_collection.json`
 - `docs/collections/can-bank-x.local.postman_environment.json`
 
 Recommended sequence in Postman:
 
-1. `Keycloak OTP > Get Admin Token`
-2. `Keycloak OTP > Validate Password Policy`
-3. `Keycloak OTP > Validate CONFIGURE_TOTP Required Action`
-4. `Keycloak OTP > Get User Token`
-5. Run all requests in `KrakenD Endpoints`
+1. `01 - Keycloak Setup > Get Admin Token`
+2. `01 - Keycloak Setup > Validate Password Policy`
+3. `01 - Keycloak Setup > Validate CONFIGURE_TOTP Required Action`
+4. `01 - Keycloak Setup > Get User Token`
+5. Run `02 - Keycloak via Gateway` requests as needed for gateway auth coverage

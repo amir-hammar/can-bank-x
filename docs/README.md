@@ -83,7 +83,7 @@ Gateway config: `gateway/krakend.json`
 - Seeded realm/client/user:
   - Realm: `can-bank-x`
   - Client: `can-bank-x-api`
-  - User: `demo.customer` / `Passw0rd!`
+  - User: `demo.customer` / `Passw0rd!123`
   - Required action: TOTP (`CONFIGURE_TOTP`)
 
 ## Database and migrations
@@ -170,6 +170,19 @@ Apply migrations manually:
 - `POST /api/v1/kyc/submit`
 - `POST /api/v1/kyc/confirm`
 - `GET /api/v1/kyc/status`
+- `POST /auth/realms/can-bank-x/protocol/openid-connect/logout`
+
+`GET /api/v1/customers/me` now includes KYC decision fields for frontend routing:
+
+- `kyc_status`: `PENDING | APPROVED | REJECTED`
+- `kyc_approved`: `true | false | null`
+- `kyc_decision_available_in_seconds`
+
+KYC mock verification data is stored in:
+
+- `services/user/mock-data/kyc/identity-mock.json`
+
+This file is configurable and intended as the shared location for future mock datasets.
 
 Error responses follow:
 
@@ -186,8 +199,39 @@ Error responses follow:
 
 - OpenAPI: `docs/openapi-user-service.yaml`
 - Postman collection: `docs/collections/can-bank-x.postman_collection.json`
-- Full KrakenD+OTP collection: `docs/collections/can-bank-x.krakend-full.postman_collection.json`
 - Postman local env: `docs/collections/can-bank-x.local.postman_environment.json`
+
+## Postman steps (Web)
+
+Use only one collection so Postman shows a single main folder with subfolders.
+
+1. Open Postman Web.
+2. Import `docs/collections/can-bank-x.postman_collection.json`.
+3. Import `docs/collections/can-bank-x.local.postman_environment.json`.
+4. Select environment `can-bank-x local`.
+5. In the collection, open `can-bank-x End-to-End`.
+6. Run requests in this order:
+  - `01 - Keycloak Setup > Get Admin Token`
+  - `01 - Keycloak Setup > Validate Password Policy`
+  - `01 - Keycloak Setup > Validate CONFIGURE_TOTP Required Action`
+  - `01 - Keycloak Setup > Get User Token`
+  - `03 - User Service - Auth > GET /api/v1/auth/me`
+  - `04 - User Service - Customers > POST /api/v1/customers/register`
+  - `05 - User Service - KYC > GET /api/v1/kyc/{path}`
+  - `06 - Account Service > GET /api/v1/accounts/{path}`
+  - `07 - Transfer Service > POST /api/v1/transfers/create`
+  - `01 - Keycloak Setup > Logout User Session` (optional, for full sign-out)
+
+Registration note:
+
+- `POST /api/v1/customers/register` is a one-time operation for a given authenticated user (`keycloak_sub`) and email.
+- Re-running it with the same token typically returns `409 CONFLICT` by design.
+- For repeat tests, either use a different Keycloak user/token or reset the `canbankx_user` database.
+
+Default Keycloak admin credentials in the Postman files are:
+
+- username: `admin`
+- password: `admin_password`
 
 ## Keycloak + KrakenD Full Test Commands
 
@@ -236,12 +280,29 @@ Grafana provisioning:
 - `monitoring/grafana/provisioning/datasources/datasource.yml`
 - `monitoring/grafana/provisioning/dashboards/dashboards.yml`
 - `monitoring/grafana/dashboards/service-health.json`
+- `monitoring/grafana/dashboards/system-overview.json`
+- `monitoring/grafana/dashboards/api-performance.json`
+- `monitoring/grafana/dashboards/business-metrics.json`
+- `monitoring/grafana/dashboards/security-auth.json`
+
+Exporter services included in `docker-compose.yml`:
+- `node-exporter`
+- `cadvisor`
+- `postgres-exporter`
 
 Metrics endpoint exposed by each service:
 - `GET /metrics`
 
 Health endpoint exposed by each service:
 - `GET /health`
+
+Prometheus UI:
+- `http://localhost:9090`
+
+Grafana auto-loads all dashboards from `/var/lib/grafana/dashboards` at startup.
+
+To refresh monitoring stack after changes:
+- `docker compose up -d --build prometheus grafana node-exporter cadvisor postgres-exporter`
 ## Run stack
 
 - `docker compose up --build`

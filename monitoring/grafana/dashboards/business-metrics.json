@@ -1,0 +1,114 @@
+{
+  "id": null,
+  "uid": "canbankx-business-metrics",
+  "title": "CanBankX - Business Metrics",
+  "tags": ["canbankx", "business"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "New Registrations (24h)",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(increase(canbankx_users_registered_total[24h])) or vector(0)",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "KYC Submissions (24h)",
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(increase(canbankx_kyc_submissions_total[24h])) or vector(0)",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "KYC Approved (24h)",
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(increase(canbankx_kyc_approved_total[24h])) or vector(0)",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "KYC Approval Rate (%)",
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 0 },
+      "targets": [
+        {
+          "expr": "(sum(increase(canbankx_kyc_approved_total[24h])) / clamp_min(sum(increase(canbankx_kyc_decisions_total[24h])), 1)) * 100 or vector(0)",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Customer Registration Trend",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "targets": [
+        {
+          "expr": "sum(rate(canbankx_users_registered_total[5m])) or vector(0)",
+          "legendFormat": "registrations/s",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "KYC Funnel Trend",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "targets": [
+        {
+          "expr": "sum(rate(canbankx_kyc_submissions_total[5m])) or vector(0)",
+          "legendFormat": "submissions/s",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(canbankx_kyc_approved_total[5m])) or vector(0)",
+          "legendFormat": "approved/s",
+          "refId": "B"
+        },
+        {
+          "expr": "sum(rate(canbankx_kyc_rejected_total[5m])) or vector(0)",
+          "legendFormat": "rejected/s",
+          "refId": "C"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Transfers Created (24h rolling)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+      "targets": [
+        {
+          "expr": "sum(increase(canbankx_transfers_created_total[24h])) or vector(0)",
+          "legendFormat": "transfers",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Transfer Volume (24h rolling)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+      "targets": [
+        {
+          "expr": "sum(increase(canbankx_transfer_volume_total[24h])) or vector(0)",
+          "legendFormat": "volume",
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}

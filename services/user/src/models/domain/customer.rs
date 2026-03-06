@@ -5,6 +5,7 @@ use sqlx::FromRow;
 pub struct Customer {
     pub id: String,
     pub keycloak_sub: String,
+    pub username: String,
     pub email: String,
     pub status: String,
     pub created_at: NaiveDateTime,
