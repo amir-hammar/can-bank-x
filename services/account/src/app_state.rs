@@ -13,3 +13,9 @@ impl AppState {
         Self { account_service }
     }
 }
+
+impl Default for AppState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
