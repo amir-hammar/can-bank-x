@@ -5,7 +5,7 @@ use axum::{
 };
 
 use crate::{
-    controllers::request_context::{get_keycloak_sub, get_trace_id},
+    controllers::request_context::{get_auth_identity, get_keycloak_sub, get_trace_id},
     models::{
         domain::AppState,
         dto::{error_dto::ErrorResponse, kyc_dto::KycConfirmRequest},
@@ -21,8 +21,13 @@ pub async fn submit_kyc(State(state): State<AppState>, headers: HeaderMap) -> im
         Err(error) => return map_error(error, &trace_id),
     };
 
-    match kyc_service::submit_kyc(&state.pool, &keycloak_sub, &state.kyc_mock_data_path, &trace_id)
-        .await
+    match kyc_service::submit_kyc(
+        &state.pool,
+        &keycloak_sub,
+        &state.kyc_mock_data_path,
+        &trace_id,
+    )
+    .await
     {
         Ok(response) => (StatusCode::ACCEPTED, Json(response)).into_response(),
         Err(error) => map_error(error, &trace_id),
@@ -50,14 +55,14 @@ pub async fn confirm_kyc(
 pub async fn kyc_status(State(state): State<AppState>, headers: HeaderMap) -> impl IntoResponse {
     let trace_id = get_trace_id(&headers);
 
-    let keycloak_sub = match get_keycloak_sub(&headers) {
-        Ok(sub) => sub,
+    let identity = match get_auth_identity(&headers) {
+        Ok(identity) => identity,
         Err(error) => return map_error(error, &trace_id),
     };
 
     match kyc_service::kyc_status(
         &state.pool,
-        &keycloak_sub,
+        &identity,
         &state.kyc_mock_data_path,
         &trace_id,
     )

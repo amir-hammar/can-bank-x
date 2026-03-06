@@ -72,7 +72,7 @@ Gateway config: `gateway/krakend.json`
 - JWT `sub` is propagated to backend in header `X-User-Sub`.
 - Trace headers `X-Trace-Id` and `X-Request-Id` are forwarded to services.
 - Rate limiting:
-  - `POST /api/v1/customers/register`
+  
   - `/api/v1/kyc/*`
   - `/api/v1/transfers/*`
 
@@ -165,7 +165,7 @@ Apply migrations manually:
 ## user-service endpoints
 
 - `GET /api/v1/auth/me`
-- `POST /api/v1/customers/register`
+ 
 - `GET /api/v1/customers/me`
 - `POST /api/v1/kyc/submit`
 - `POST /api/v1/kyc/confirm`
@@ -201,37 +201,114 @@ Error responses follow:
 - Postman collection: `docs/collections/can-bank-x.postman_collection.json`
 - Postman local env: `docs/collections/can-bank-x.local.postman_environment.json`
 
-## Postman steps (Web)
+## Postman collection (Gateway-First, by use case)
 
-Use only one collection so Postman shows a single main folder with subfolders.
+Collection file:
 
-1. Open Postman Web.
-2. Import `docs/collections/can-bank-x.postman_collection.json`.
-3. Import `docs/collections/can-bank-x.local.postman_environment.json`.
-4. Select environment `can-bank-x local`.
-5. In the collection, open `can-bank-x End-to-End`.
-6. Run requests in this order:
-  - `01 - Keycloak Setup > Get Admin Token`
-  - `01 - Keycloak Setup > Validate Password Policy`
-  - `01 - Keycloak Setup > Validate CONFIGURE_TOTP Required Action`
-  - `01 - Keycloak Setup > Get User Token`
-  - `03 - User Service - Auth > GET /api/v1/auth/me`
-  - `04 - User Service - Customers > POST /api/v1/customers/register`
-  - `05 - User Service - KYC > GET /api/v1/kyc/{path}`
-  - `06 - Account Service > GET /api/v1/accounts/{path}`
-  - `07 - Transfer Service > POST /api/v1/transfers/create`
-  - `01 - Keycloak Setup > Logout User Session` (optional, for full sign-out)
+- `docs/collections/can-bank-x.postman_collection.json`
 
-Registration note:
+Environment file:
 
-- `POST /api/v1/customers/register` is a one-time operation for a given authenticated user (`keycloak_sub`) and email.
-- Re-running it with the same token typically returns `409 CONFLICT` by design.
-- For repeat tests, either use a different Keycloak user/token or reset the `canbankx_user` database.
+- `docs/collections/can-bank-x.local.postman_environment.json`
 
-Default Keycloak admin credentials in the Postman files are:
+### What this collection guarantees
 
-- username: `admin`
-- password: `admin_password`
+- Gateway-first routing: main requests target `{{gateway_base_url}}` (`http://localhost:8080`).
+- Full KrakenD coverage: every route from `gateway/krakend.json` is represented.
+- Use-case organization: folders are grouped by functional CU instead of technical service/method lists.
+- Optional direct backend debug folder for direct-vs-gateway checks.
+
+### Folder structure
+
+- `01. Authentication & Identity`
+- `02. KYC & Client Verification`
+- `03. Client Profile`
+- `04. Bank Accounts`
+- `05. Transactions / History`
+- `06. Transfers & Payments`
+- `07. Credit Products`
+- `08. Notifications`
+- `09. Admin / Backoffice / Compliance`
+- `10. Health / Monitoring / Utility`
+- `11. Direct Backend (Debug)`
+- `_Missing or Not Yet Exposed in Gateway`
+
+### Required variables
+
+The collection/environment defines and uses:
+
+- `gateway_base_url`
+- `backend_base_url` (optional debug only)
+- `access_token`
+- `client_id`
+- `account_id`
+- `transaction_id`
+- `transfer_id`
+- `kyc_id`
+- `email`
+- `password`
+
+### How to run (demo order)
+
+1. Import both files in Postman.
+2. Select environment `can-bank-x local`.
+3. Run this minimal flow top-to-bottom:
+  - `CU-01 / 01.01 Ouvrir Page Inscription`
+  - `CU-02 / 02.01 Ouvrir Page Connexion`
+  - `CU-02 / 02.02 Get Profile`
+  - `CU-02 / 02.03 Get KYC Status`
+
+### UC-01 Step-by-step (Inscription & KYC)
+
+1. Open `CU-01 Inscription & Verification d'identite (KYC)`.
+2. Send `01.01 Ouvrir Page Inscription`.
+3. In Postman request Authorization tab, scroll all the way down, click `Clear Cookies`, then click `Get New Access Token`.
+4. The Keycloak page opens up. Choose `Register` (might need to scroll down a bit).
+5. Fill all fields and submit registration.
+6. If you do not see `Register` or all custom fields, scroll down in the Keycloak page.
+7. Copy the returned `access_token`, open `CU-02 / 02.02 Get Profile`, then in the request Authorization tab paste it in `access_token`. Make sure there are no trailing spaces or newline characters at the end of the pasted token because it may prevent the token from working.
+8. You can now call:
+  - `CU-02 / 02.02 Get Profile`
+  - `CU-02 / 02.03 Get KYC Status`
+
+### UC-02 Step-by-step (Authentification & MFA)
+
+1. Open `CU-02 Authentification & MFA`.
+2. Send `02.01 Ouvrir Page Connexion`.
+3. In Postman request Authorization tab, click `Clear Cookies`, then click `Get New Access Token`.
+4. The Keycloak page opens in browser. Sign in with user credentials.
+5. Complete OTP/MFA when prompted.
+6. Copy the returned `access_token`, open `CU-02 / 02.02 Get Profile`, then in the request Authorization tab paste it in `access_token`. Make sure there are no trailing spaces or newline characters at the end of the pasted token because it may prevent the token from working.
+7. Send `02.02 Get Profile` to retrieve customer info.
+8. Send `02.03 Get KYC Status` to retrieve KYC state.
+
+### Notes for evaluators
+
+- The collection includes basic test scripts on requests:
+  - status code checks
+  - response existence checks
+  - token/ID extraction when available
+- Sign-in is browser-based (authorization code flow) to mirror sign-up behavior.
+- Refresh token and logout requests were intentionally removed from this collection.
+- Account/transfer routes are included because they are exposed in KrakenD, but these backends may return `502/503` in local runs if the related services are not started (they are currently commented in `docker-compose.yml`).
+- `_Missing or Not Yet Exposed in Gateway` documents CU items from the cahier that are not currently exposed as dedicated gateway routes.
+
+### KrakenD routes covered by Postman
+
+- `GET /health`
+- `GET /realms/can-bank-x/protocol/openid-connect/auth`
+- `GET /realms/can-bank-x/protocol/openid-connect/registrations`
+- `GET /realms/can-bank-x/login-actions/{path}`
+- `POST /realms/can-bank-x/login-actions/{path}`
+- `GET /resources/{a}/{b}/{c}/{d}/{e}`
+- `POST /auth/realms/can-bank-x/protocol/openid-connect/token`
+- `GET /api/v1/auth/me`
+  
+- `GET /api/v1/customers/{path}`
+- `GET /api/v1/kyc/{path}`
+- `GET /api/v1/accounts/{path}`
+- `POST /api/v1/transfers/create`
+- `GET /api/v1/transfers/{path}`
 
 ## Keycloak + KrakenD Full Test Commands
 

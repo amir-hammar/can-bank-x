@@ -13,7 +13,10 @@ pub fn validate_register_request(payload: &RegisterRequest) -> Result<Vec<String
     let postal_compact = compact_postal_code(&payload.postal_code);
     let nas_digits = compact_nas(&payload.nas);
 
-    if username.is_empty() || username.len() > 254 || !username.chars().any(|ch| ch.is_ascii_alphanumeric()) {
+    if username.is_empty()
+        || username.len() > 254
+        || !username.chars().any(|ch| ch.is_ascii_alphanumeric())
+    {
         details.push("username is invalid (1-254 chars and must include at least one alphanumeric character)".to_string());
     }
 

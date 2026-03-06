@@ -5,7 +5,7 @@ use axum::{
 
 use crate::controllers::{
     auth_controller::me as auth_me,
-    customer_controller::{me as customer_me, register},
+    customer_controller::me as customer_me,
     health_controller::{health, metrics},
     kyc_controller::{confirm_kyc, kyc_status, submit_kyc},
 };
@@ -15,7 +15,6 @@ pub fn create_router(state: AppState) -> Router {
     Router::new()
         .route("/health", get(health))
         .route("/metrics", get(metrics))
-        .route("/api/v1/customers/register", post(register))
         .route("/api/v1/customers/me", get(customer_me))
         .route("/api/v1/auth/me", get(auth_me))
         .route("/api/v1/kyc/submit", post(submit_kyc))

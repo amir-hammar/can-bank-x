@@ -68,13 +68,6 @@ materialize_path() {
 
 post_body_for() {
   endpoint="$1"
-  if [ "$endpoint" = "/api/v1/customers/register" ]; then
-    ts=$(date +%s)
-    cat <<EOF
-{"email":"gateway.test.$ts@example.com","full_name":"Gateway Test","street":"1 Main St","city":"Montreal","province":"QC","postal_code":"H2X 1Z5","country":"Canada","nas":"123456789"}
-EOF
-    return
-  fi
   if [ "$endpoint" = "/auth/realms/can-bank-x/protocol/openid-connect/token" ]; then
     cat <<EOF
 client_id=$CLIENT_ID&username=$TEST_USER&password=$TEST_PASSWORD&grant_type=password&scope=openid+profile+email

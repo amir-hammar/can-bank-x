@@ -1,6 +1,7 @@
 use sqlx::{Pool, Postgres};
 
 use crate::{
+    controllers::request_context::AuthIdentity,
     models::domain::customer::CustomerWithProfile,
     models::dto::kyc_dto::KycStatusResponse,
     repositories::{audit_repository, customer_repository, kyc_repository},
@@ -60,7 +61,8 @@ pub async fn submit_kyc(
         });
     }
 
-    let config = load_config(kyc_mock_data_path).map_err(|message| ServiceError::internal(&message))?;
+    let config =
+        load_config(kyc_mock_data_path).map_err(|message| ServiceError::internal(&message))?;
 
     Ok(KycStatusResponse {
         customer_id: case.customer_id,
@@ -140,16 +142,23 @@ pub async fn confirm_kyc(
 
 pub async fn kyc_status(
     pool: &Pool<Postgres>,
-    keycloak_sub: &str,
+    identity: &AuthIdentity,
     kyc_mock_data_path: &str,
     trace_id: &str,
 ) -> Result<KycStatusResponse, ServiceError> {
-    let customer = customer_repository::get_customer_with_profile_by_sub(pool, keycloak_sub)
+    let customer = customer_repository::get_customer_with_profile_by_sub(pool, &identity.sub)
         .await
         .map_err(|_| ServiceError::internal("Could not fetch customer"))?;
 
-    let Some(customer) = customer else {
-        return Err(ServiceError::not_found("Customer profile not found"));
+    let customer = match customer {
+        Some(c) => c,
+        None => {
+            crate::services::customer_service::register_customer_from_identity(pool, identity, trace_id).await?;
+            customer_repository::get_customer_with_profile_by_sub(pool, &identity.sub)
+                .await
+                .map_err(|_| ServiceError::internal("Could not fetch customer"))?
+                .ok_or_else(|| ServiceError::internal("Failed to create customer"))?
+        }
     };
 
     resolve_kyc_status_for_customer(pool, &customer, kyc_mock_data_path, trace_id).await
@@ -179,9 +188,15 @@ pub async fn resolve_kyc_status_for_customer(
         });
     }
 
-    let config = load_config(kyc_mock_data_path).map_err(|message| ServiceError::internal(&message))?;
+    let config =
+        load_config(kyc_mock_data_path).map_err(|message| ServiceError::internal(&message))?;
 
-    match evaluate_decision(&config, case.created_at, &customer.profile.full_name, &customer.profile.nas) {
+    match evaluate_decision(
+        &config,
+        case.created_at,
+        &customer.profile.full_name,
+        &customer.profile.nas,
+    ) {
         KycDecision::Pending { remaining_seconds } => Ok(KycStatusResponse {
             customer_id: case.customer_id,
             kyc_case_id: case.id,

@@ -6,6 +6,10 @@
   "editUsernameAllowed": false,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
+  "attributes": {
+    "userProfileEnabled": "true",
+    "userProfileUnmanagedAttributes": "true"
+  },
   "passwordPolicy": "length(12) and upperCase(1) and lowerCase(1) and digits(1) and specialChars(1) and notEmail",
   "requiredActions": [
     {
@@ -21,6 +25,7 @@
   "accountTheme": "can-bank-x",
   "adminTheme": "keycloak",
   "emailTheme": "keycloak",
+  
   "clients": [
     {
       "clientId": "can-bank-x-api",
@@ -32,26 +37,164 @@
       "standardFlowEnabled": true,
       "redirectUris": [
         "http://localhost:8083/*",
-        "http://localhost:8083/callback"
+        "http://localhost:8083/callback",
+        "https://oauth.pstmn.io/v1/callback",
+        "https://oauth.pstmn.io/*"
       ],
       "webOrigins": [
-        "http://localhost:8083"
+        "http://localhost:8083",
+        "https://oauth.pstmn.io"
       ],
       "defaultClientScopes": [
         "profile",
         "email",
         "roles"
+      ],
+      "protocolMappers": [
+        {
+          "name": "fullName",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "fullName",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "fullName",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "street",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "street",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "street",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "city",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "city",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "city",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "province",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "province",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "province",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "postalCode",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "postalCode",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "postalCode",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "country",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "country",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "country",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "nas",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "nas",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "nas",
+            "jsonType.label": "String"
+          }
+        }
       ]
     }
   ],
+  "components": {
+    "org.keycloak.userprofile.UserProfileProvider": [
+      {
+        "id": "can-bank-x-user-profile",
+        "providerId": "declarative-user-profile",
+        "subComponents": {},
+        "config": {
+          "kc.user.profile.config": [
+            "{\"attributes\":[{\"name\":\"username\",\"displayName\":\"${username}\",\"validations\":{\"length\":{\"min\":3,\"max\":255},\"username-prohibited-characters\":{},\"up-username-not-idn-homograph\":{}},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"email\",\"displayName\":\"${email}\",\"validations\":{\"email\":{},\"length\":{\"max\":255}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"firstName\",\"displayName\":\"${firstName}\",\"validations\":{\"length\":{\"max\":255},\"person-name-prohibited-characters\":{}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"lastName\",\"displayName\":\"${lastName}\",\"validations\":{\"length\":{\"max\":255},\"person-name-prohibited-characters\":{}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"fullName\",\"displayName\":\"Full name\",\"validations\":{\"length\":{\"min\":2,\"max\":100}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"user-metadata\",\"multivalued\":false},{\"name\":\"street\",\"displayName\":\"Street\",\"validations\":{\"length\":{\"min\":3,\"max\":255}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"user-metadata\",\"multivalued\":false},{\"name\":\"city\",\"displayName\":\"City\",\"validations\":{\"length\":{\"min\":2,\"max\":100}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"user-metadata\",\"multivalued\":false},{\"name\":\"province\",\"displayName\":\"Province\",\"validations\":{\"pattern\":{\"pattern\":\"^(AB|BC|MB|NB|NL|NS|NT|NU|ON|PE|QC|SK|YT)$\",\"error-message\":\"Province must be a valid Canadian code.\"}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"user-metadata\",\"multivalued\":false},{\"name\":\"postalCode\",\"displayName\":\"Postal code\",\"validations\":{\"pattern\":{\"pattern\":\"^[A-Za-z]\\\\d[A-Za-z][ -]?\\\\d[A-Za-z]\\\\d$\",\"error-message\":\"Use Canadian postal code format A1A 1A1.\"}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"user-metadata\",\"multivalued\":false},{\"name\":\"country\",\"displayName\":\"Country\",\"validations\":{\"length\":{\"min\":2,\"max\":100}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"user-metadata\",\"multivalued\":false},{\"name\":\"nas\",\"displayName\":\"NAS\",\"validations\":{\"pattern\":{\"pattern\":\"^\\\\d{9}$\",\"error-message\":\"NAS must contain exactly 9 digits.\"}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"user-metadata\",\"multivalued\":false}],\"groups\":[{\"name\":\"user-metadata\",\"displayHeader\":\"User metadata\",\"displayDescription\":\"Attributes, which refer to user metadata\"}]}"
+          ]
+        }
+      }
+    ]
+  },
   "users": [
     {
       "username": "demo.customer",
       "enabled": true,
       "email": "demo.customer@example.com",
       "emailVerified": true,
-      "firstName": "Demo",
-      "lastName": "Customer",
+      "attributes": {
+        "fullName": [
+          "Demo Customer"
+        ],
+        "street": [
+          "456 Rue Saint-Denis"
+        ],
+        "city": [
+          "Montreal"
+        ],
+        "province": [
+          "QC"
+        ],
+        "postalCode": [
+          "H2X 3L2"
+        ],
+        "country": [
+          "Canada"
+        ],
+        "nas": [
+          "123456789"
+        ]
+      },
       "credentials": [
         {
           "type": "password",

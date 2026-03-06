@@ -76,3 +76,28 @@ pub async fn get_customer_with_profile_by_sub(
 
     Ok(Some(CustomerWithProfile { customer, profile }))
 }
+
+pub async fn rebind_customer_sub_by_identity(
+    pool: &Pool<Postgres>,
+    new_keycloak_sub: &str,
+    username: &str,
+    email: &str,
+) -> Result<bool, sqlx::Error> {
+    let updated = sqlx::query(
+        r#"
+        UPDATE customers
+        SET keycloak_sub = $1,
+            updated_at = NOW()
+        WHERE username = $2
+          AND email = $3
+          AND keycloak_sub <> $1
+        "#,
+    )
+    .bind(new_keycloak_sub)
+    .bind(username)
+    .bind(email)
+    .execute(pool)
+    .await?;
+
+    Ok(updated.rows_affected() > 0)
+}

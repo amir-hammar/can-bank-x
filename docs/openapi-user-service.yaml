@@ -15,34 +15,7 @@ paths:
           description: Authenticated principal
         '401':
           description: Unauthorized
-  /api/v1/customers/register:
-    post:
-      summary: Register customer profile using JWT subject
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [email, full_name, street, city, province, postal_code, country, nas]
-              properties:
-                email: { type: string, format: email }
-                full_name: { type: string }
-                street: { type: string }
-                city: { type: string }
-                province: { type: string }
-                postal_code: { type: string }
-                country: { type: string }
-                nas: { type: string }
-      responses:
-        '201':
-          description: Registered
-        '400':
-          description: Validation error
-        '409':
-          description: Duplicate customer
+  
   /api/v1/customers/me:
     get:
       summary: Get customer profile by JWT subject

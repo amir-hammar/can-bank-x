@@ -291,11 +291,72 @@
     }
   };
 
+  const removeFieldGroup = (input) => {
+    if (!input) {
+      return;
+    }
+    const group = input.closest('.form-group') || input.parentElement;
+    if (group) {
+      group.remove();
+    } else {
+      input.remove();
+    }
+  };
+
+  const normalizeRealmManagedRegisterFields = (registerForm) => {
+    const builtInPassword = registerForm.querySelector('input[name="password"][type="password"]');
+    const duplicatePasswordInputs = Array.from(registerForm.querySelectorAll('input[name="password"]'))
+      .filter((input) => input !== builtInPassword);
+    duplicatePasswordInputs.forEach(removeFieldGroup);
+
+    // If the realm profile defines its own confirmation field, it duplicates Keycloak's built-in one.
+    const profileConfirmPassword = registerForm.querySelector('input[name="confirmPassword"]');
+    removeFieldGroup(profileConfirmPassword);
+
+    [
+      'input[name="fullName"]',
+      'input[name="street"]',
+      'input[name="city"]',
+      'input[name="postalCode"]',
+      'input[name="province"]',
+      'select[name="province"]',
+      'input[name="country"]',
+      'input[name="nas"]',
+      'input[name="user.attributes.fullName"]',
+      'input[name="user.attributes.street"]',
+      'input[name="user.attributes.city"]',
+      'input[name="user.attributes.postalCode"]',
+      'input[name="user.attributes.province"]',
+      'select[name="user.attributes.province"]',
+      'input[name="user.attributes.country"]',
+      'input[name="user.attributes.nas"]'
+    ].forEach((selector) => {
+      registerForm.querySelectorAll(selector).forEach(removeFieldGroup);
+    });
+  };
+
+  const enhancePasswordToggleIcons = () => {
+    const buttons = document.querySelectorAll('button[aria-controls="password"], button[aria-controls="password-confirm"], button[data-password-toggle]');
+
+    buttons.forEach((btn) => {
+      const targetId = btn.getAttribute('aria-controls');
+      const targetInput = targetId ? document.getElementById(targetId) : null;
+      const isVisible = targetInput?.type === 'text';
+
+      btn.classList.add('cbx-password-toggle');
+      btn.type = 'button';
+      btn.setAttribute('aria-label', isVisible ? 'Hide password' : 'Show password');
+      btn.innerHTML = isVisible ? EYE_OFF_ICON : EYE_ICON;
+    });
+  };
+
   const enhanceRegisterFields = () => {
     const registerForm = document.getElementById('kc-register-form');
     if (!registerForm || registerForm.querySelector('.cbx-register-extra')) {
       return;
     }
+
+    normalizeRealmManagedRegisterFields(registerForm);
 
     const provinceOptions = [
       'AB', 'BC', 'MB', 'NB', 'NL', 'NS', 'NT', 'NU', 'ON', 'PE', 'QC', 'SK', 'YT'
@@ -334,18 +395,18 @@
           <input id="cbx-city" name="user.attributes.city" class="pf-c-form-control" type="text" required placeholder="Toronto" autocomplete="address-level2" minlength="2" />
         </div>
         <div class="form-group cbx-form-group">
-          <label for="cbx-province" class="pf-c-form__label pf-c-form__label-text">Province *</label>
-          <select id="cbx-province" name="user.attributes.province" class="pf-c-form-control" required>
-            <option value="" selected disabled>Select</option>
-            ${provinceOptions.map((p) => `<option value="${p}">${p}</option>`).join('')}
-          </select>
+          <label for="cbx-postalCode" class="pf-c-form__label pf-c-form__label-text">Postal code *</label>
+          <input id="cbx-postalCode" name="user.attributes.postalCode" class="pf-c-form-control" type="text" required placeholder="A1A 1A1" autocomplete="postal-code" pattern="^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$" />
         </div>
       </div>
 
       <div class="cbx-grid-2">
         <div class="form-group cbx-form-group">
-          <label for="cbx-postalCode" class="pf-c-form__label pf-c-form__label-text">Postal code *</label>
-          <input id="cbx-postalCode" name="user.attributes.postalCode" class="pf-c-form-control" type="text" required placeholder="A1A 1A1" autocomplete="postal-code" pattern="^[A-Za-z]\\d[A-Za-z][ -]?\\d[A-Za-z]\\d$" />
+          <label for="cbx-province" class="pf-c-form__label pf-c-form__label-text">Province *</label>
+          <select id="cbx-province" name="user.attributes.province" class="pf-c-form-control" required>
+            <option value="" selected disabled>Select</option>
+            ${provinceOptions.map((p) => `<option value="${p}">${p}</option>`).join('')}
+          </select>
         </div>
         <div class="form-group cbx-form-group">
           <label for="cbx-country" class="pf-c-form__label pf-c-form__label-text">Country *</label>
@@ -426,6 +487,7 @@
       btn.addEventListener('click', syncPasswordVisibility, true);
     });
     updateToggleUi(false);
+    enhancePasswordToggleIcons();
 
     const fullNameInput = registerForm.querySelector('#cbx-fullName');
     const postalInput = registerForm.querySelector('#cbx-postalCode');
@@ -594,6 +656,7 @@
       }
       confirmInput.setCustomValidity('');
 
+      // Keep Keycloak required first/last name fields in sync while the UI uses fullName only.
       const [firstName = '', ...rest] = fullName.split(' ');
       const lastName = rest.join(' ').trim() || firstName;
       if (firstNameInput && lastNameInput) {
@@ -603,17 +666,70 @@
     });
   };
 
+  const simplifyTotpSetupPage = () => {
+    const isTotpSetup =
+      window.location.pathname.includes('/login-actions/required-action') ||
+      window.location.pathname.includes('/login-actions/authenticate');
+
+    if (!isTotpSetup) {
+      return;
+    }
+
+    // Remove optional device label field from TOTP setup page.
+    const deviceNameInput = document.querySelector(
+      'input[name="userLabel"], input#userLabel, input#totpLabel'
+    );
+    if (deviceNameInput) {
+      const group = deviceNameInput.closest('.form-group') || deviceNameInput.parentElement;
+      if (group) {
+        group.remove();
+      } else {
+        deviceNameInput.remove();
+      }
+    }
+
+    // Disable and hide "sign out from other devices" option.
+    const signOutCheckbox = document.querySelector(
+      'input[name="logout-sessions"], input[name="logoutSessions"], input#logout-sessions'
+    );
+    if (signOutCheckbox) {
+      signOutCheckbox.checked = false;
+      signOutCheckbox.value = 'false';
+
+      const group = signOutCheckbox.closest('.form-group') || signOutCheckbox.parentElement;
+      if (group) {
+        group.remove();
+      } else {
+        signOutCheckbox.remove();
+      }
+
+      // Ensure form submits an explicit false value.
+      const form = document.getElementById('kc-totp-settings-form') || signOutCheckbox.form;
+      if (form && !form.querySelector('input[type="hidden"][name="logout-sessions"]')) {
+        const hidden = document.createElement('input');
+        hidden.type = 'hidden';
+        hidden.name = 'logout-sessions';
+        hidden.value = 'false';
+        form.appendChild(hidden);
+      }
+    }
+  };
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
       redirectIfAlreadyAuthenticatedForRegistration();
       applyAuthLayoutScaffold();
       addHomeButton();
+      enhancePasswordToggleIcons();
       enhanceRegisterFields();
+      simplifyTotpSetupPage();
     });
   } else {
     redirectIfAlreadyAuthenticatedForRegistration();
     applyAuthLayoutScaffold();
     addHomeButton();
+    enhancePasswordToggleIcons();
     enhanceRegisterFields();
+    simplifyTotpSetupPage();
   }
 })();

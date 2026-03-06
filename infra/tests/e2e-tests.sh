@@ -74,33 +74,5 @@ if [ -z "$ACCESS_TOKEN" ]; then
   exit 1
 fi
 
-echo "E2E: registration flow" | tee -a "$LOG_FILE"
-EMAIL="ci.$(date +%s%N 2>/dev/null || date +%s).$$@example.com"
-REG_STATUS=$(curl -s -o "$REG_FILE" -w "%{http_code}" -X POST http://localhost:8080/api/v1/customers/register \
-  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-  -H "Content-Type: application/json" \
-  -d "{\"email\":\"${EMAIL}\",\"full_name\":\"CI Customer\",\"street\":\"123 Main St\",\"city\":\"Montreal\",\"province\":\"QC\",\"postal_code\":\"H2X1Z5\",\"country\":\"Canada\",\"nas\":\"123456789\"}")
-if [ "$REG_STATUS" -ne 201 ]; then
-  if [ "$REG_STATUS" -eq 409 ]; then
-    echo "Registration already exists for this user; continuing E2E flow" | tee -a "$LOG_FILE"
-  else
-    echo "Registration flow failed with status ${REG_STATUS}" | tee -a "$LOG_FILE"
-    cat "$REG_FILE" | tee -a "$LOG_FILE"
-    exit 1
-  fi
-fi
-
-# Next iteration: add transfer flow E2E
-
-echo "E2E: invalid registration returns correct error" | tee -a "$LOG_FILE"
-BAD_STATUS=$(curl -s -o "$BAD_FILE" -w "%{http_code}" -X POST http://localhost:8080/api/v1/customers/register \
-  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-  -H "Content-Type: application/json" \
-  -d '{"email":"bad-email","full_name":"A","street":"","city":"","province":"","postal_code":"000","country":"","nas":"123"}')
-if [ "$BAD_STATUS" -ne 400 ]; then
-  echo "Invalid request expected 400 but got ${BAD_STATUS}" | tee -a "$LOG_FILE"
-  cat "$BAD_FILE" | tee -a "$LOG_FILE"
-  exit 1
-fi
 
 echo "E2E tests passed" | tee -a "$LOG_FILE"
