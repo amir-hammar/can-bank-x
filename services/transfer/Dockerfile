@@ -1,6 +1,6 @@
 FROM rust:1.83.0-bookworm AS deps
 WORKDIR /app
-COPY Cargo.toml Cargo.lock* .
+COPY Cargo.toml .
 RUN mkdir src && echo 'fn main() {}' > src/main.rs && cargo build --release && rm -rf src
 
 FROM rust:1.83.0-bookworm AS builder
