@@ -11,7 +11,8 @@ use crate::{
         transfer::Transfer,
     },
     repositories::{
-        audit_repository::AuditRepository, transfer_repository::{CreateTransferInput, TransferRepository},
+        audit_repository::AuditRepository,
+        transfer_repository::{CreateTransferInput, TransferRepository},
     },
     utils::{errors::AppError, validators},
 };
