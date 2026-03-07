@@ -7,6 +7,17 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use crate::models::transfer::Transfer;
 
 #[derive(Clone)]
+pub struct CreateTransferInput {
+    pub customer_id: String,
+    pub from_account_id: String,
+    pub to_account_id: String,
+    pub amount: f64,
+    pub currency: String,
+    pub idempotency_key: String,
+    pub status: String,
+}
+
+#[derive(Clone)]
 pub struct TransferRepository {
     sequence: Arc<AtomicU64>,
     transfers: Arc<Mutex<Vec<Transfer>>>,
@@ -38,16 +49,7 @@ impl TransferRepository {
             .cloned()
     }
 
-    pub async fn create_transfer(
-        &self,
-        customer_id: String,
-        from_account_id: String,
-        to_account_id: String,
-        amount: f64,
-        currency: String,
-        idempotency_key: String,
-        status: String,
-    ) -> Transfer {
+    pub async fn create_transfer(&self, input: CreateTransferInput) -> Transfer {
         let id = self.sequence.fetch_add(1, Ordering::Relaxed);
         let created_at = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -56,13 +58,13 @@ impl TransferRepository {
 
         let transfer = Transfer {
             transfer_id: format!("tr_{}", id),
-            customer_id,
-            from_account_id,
-            to_account_id,
-            amount,
-            currency,
-            status,
-            idempotency_key,
+            customer_id: input.customer_id,
+            from_account_id: input.from_account_id,
+            to_account_id: input.to_account_id,
+            amount: input.amount,
+            currency: input.currency,
+            status: input.status,
+            idempotency_key: input.idempotency_key,
             created_at,
         };
 

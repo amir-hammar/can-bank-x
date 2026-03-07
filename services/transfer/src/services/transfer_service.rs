@@ -10,7 +10,9 @@ use crate::{
         },
         transfer::Transfer,
     },
-    repositories::{audit_repository::AuditRepository, transfer_repository::TransferRepository},
+    repositories::{
+        audit_repository::AuditRepository, transfer_repository::{CreateTransferInput, TransferRepository},
+    },
     utils::{errors::AppError, validators},
 };
 
@@ -139,15 +141,15 @@ impl TransferService {
 
         let transfer = self
             .transfer_repository
-            .create_transfer(
-                payload.customer_id,
-                payload.from_account_id,
-                payload.to_account_id,
-                payload.amount,
-                apply_result.currency,
-                payload.idempotency_key,
-                "COMPLETED".to_string(),
-            )
+            .create_transfer(CreateTransferInput {
+                customer_id: payload.customer_id,
+                from_account_id: payload.from_account_id,
+                to_account_id: payload.to_account_id,
+                amount: payload.amount,
+                currency: apply_result.currency,
+                idempotency_key: payload.idempotency_key,
+                status: "COMPLETED".to_string(),
+            })
             .await;
 
         self.audit_repository
