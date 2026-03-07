@@ -197,7 +197,9 @@ Error responses follow:
 
 ## API artifacts
 
-- OpenAPI: `docs/openapi-user-service.yaml`
+- OpenAPI user-service: `docs/openapi-user-service.yaml`
+- OpenAPI account-service: `docs/openapi-account-service.yaml`
+- OpenAPI transfer-service: `docs/openapi-transfer-service.yaml`
 - Postman collection: `docs/collections/can-bank-x.postman_collection.json`
 - Postman local env: `docs/collections/can-bank-x.local.postman_environment.json`
 
@@ -223,7 +225,8 @@ Environment file:
 - `CU-01 Inscription & Verification d'identite (KYC)`
 - `CU-02 Authentification & MFA`
 - `CU-03 Ouverture d'un compte bancaire`
-- `CU-04 Consultation des soldes et comptes`
+- `CU-04 Consultation des soldes et historiques`
+- `CU-05 Virement bancaire (interne / Interac simule)`
 
 ### Required variables
 
@@ -252,6 +255,11 @@ The collection/environment defines and uses:
   - `CU-03 / 03.01 Créer compte CHEQUING`
   - `CU-04 / 04.01 Lister comptes client`
   - `CU-04 / 04.02 Consulter solde du compte`
+  - `CU-04 / 04.03 Consulter historique des transactions`
+  - `CU-05 / 05.01 Creer compte destination SAVINGS`
+  - `CU-05 / 05.02 Effectuer virement`
+  - `CU-05 / 05.03 Consulter details du virement`
+  - `CU-05 / 05.04 Lister historique client`
 
 ### UC-01 Step-by-step (Inscription & KYC)
 
@@ -260,9 +268,14 @@ The collection/environment defines and uses:
 3. In Postman request Authorization tab, scroll all the way down, click `Clear Cookies`, then click `Get New Access Token`.
 4. The Keycloak page opens up. Choose `Register` (might need to scroll down a bit).
 5. Fill all fields and submit registration.
-6. If you do not see `Register` or all custom fields, scroll down in the Keycloak page.
-7. Copy the returned `access_token`, open `CU-02 / 02.02 Get Profile`, then in the request Authorization tab paste it in `access_token`. Make sure there are no trailing spaces or newline characters at the end of the pasted token because it may prevent the token from working.
-8. You can now call:
+6. For KYC to be `APPROVED` with the mock verifier, the registration values must match exactly:
+  - `Full name`: `Postman Gateway` or `Test`
+  - `NAS`: `123456789`
+  - Keep exact spelling/casing and no extra spaces.
+  - If another full name or NAS is used, KYC may be rejected.
+7. If you do not see `Register` or all custom fields, scroll down in the Keycloak page.
+8. Copy the returned `access_token`, open `CU-02 / 02.02 Get Profile`, then in the request Authorization tab paste it in `access_token`. Make sure there are no trailing spaces or newline characters at the end of the pasted token because it may prevent the token from working.
+9. You can now call:
   - `CU-02 / 02.02 Get Profile`
   - `CU-02 / 02.03 Get KYC Status`
 
@@ -291,10 +304,10 @@ The collection/environment defines and uses:
   - `account_id` into `{{account_id}}`
   - the same request `customer_id` into `{{account_customer_id}}`
 
-### UC-04 Step-by-step (Consultation des soldes et comptes)
+### UC-04 Step-by-step (Consultation des soldes et historiques)
 
 1. Ensure you already created at least one account in UC-03.
-2. Open folder `CU-04 Consultation des soldes et comptes`.
+2. Open folder `CU-04 Consultation des soldes et historiques`.
 3. Send `04.01 Lister comptes client`.
 4. Query parameter `customer_id` uses `{{account_customer_id}}` (set by UC-03), to avoid mismatch with `{{username}}`.
 5. Expected result: `200 OK` with an array of accounts.
@@ -302,6 +315,21 @@ The collection/environment defines and uses:
 7. Send `04.02 Consulter solde du compte`.
 8. Query parameter `account_id` uses saved `{{account_id}}`.
 9. Expected result: `200 OK` with `available_balance`, `ledger_balance`, and `currency`.
+10. Send `04.03 Consulter historique des transactions`.
+11. Query parameters use `account_id={{account_id}}` and `limit=25`.
+12. Expected result: `200 OK` with a transfer history array.
+
+### UC-05 Step-by-step (Virement bancaire)
+
+1. Ensure you already have `{{account_id}}` and `{{account_customer_id}}` from UC-03/UC-04.
+2. Open folder `CU-05 Virement bancaire (interne / Interac simule)`.
+3. Send `05.01 Créer compte destination SAVINGS`.
+4. Expected result: `201 Created`, destination account stored into `{{beneficiary_account_id}}`.
+5. Send `05.02 Effectuer virement`.
+6. Request body uses `POST /api/v1/transfers` (RESTful create endpoint).
+7. Expected result: `201 Created`, transfer id stored into `{{transfer_id}}`.
+8. Send `05.03 Consulter details du virement` to validate transfer retrieval by id.
+9. Send `05.04 Lister historique client` to validate transfer history by `customer_id`.
 
 ### Notes for evaluators
 
@@ -311,7 +339,7 @@ The collection/environment defines and uses:
   - token/ID extraction when available
 - Sign-in is browser-based (authorization code flow) to mirror sign-up behavior.
 - Refresh token and logout requests were intentionally removed from this collection.
-- Account/transfer routes are included because they are exposed in KrakenD. `account-service` is enabled by default in `docker-compose.yml`; `transfer-service` may still return `502/503` in local runs if it is not started.
+- Account/transfer routes are included and enabled by default in `docker-compose.yml`.
 - `_Missing or Not Yet Exposed in Gateway` documents CU items from the cahier that are not currently exposed as dedicated gateway routes.
 
 ### KrakenD routes covered by Postman
@@ -330,8 +358,9 @@ The collection/environment defines and uses:
 - `POST /api/v1/accounts/create`
 - `GET /api/v1/accounts`
 - `GET /api/v1/accounts/balance`
-- `POST /api/v1/transfers/create`
-- `GET /api/v1/transfers/{path}`
+- `POST /api/v1/transfers`
+- `GET /api/v1/transfers`
+- `GET /api/v1/transfers/{id}`
 
 ## Keycloak + KrakenD Full Test Commands
 

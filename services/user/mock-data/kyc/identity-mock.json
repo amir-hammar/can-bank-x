@@ -8,6 +8,10 @@
     {
       "full_name": "Postman Gateway",
       "nas": "123456789"
+    },
+    {
+      "full_name": "Test",
+      "nas": "123456789"
     }
   ]
 }

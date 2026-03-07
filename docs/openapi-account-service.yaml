@@ -1,0 +1,152 @@
+openapi: 3.0.3
+info:
+  title: can-bank-x account-service API
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+paths:
+  /api/v1/accounts/create:
+    post:
+      summary: Create a chequing or savings account
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAccountRequest'
+      responses:
+        '201':
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateAccountResponse'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/accounts:
+    get:
+      summary: List customer accounts
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: customer_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Accounts list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AccountSummaryResponse'
+        '400':
+          description: Invalid query
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/accounts/balance:
+    get:
+      summary: Get account balance by account id
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: account_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Balance details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountBalanceResponse'
+        '404':
+          description: Account not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    CreateAccountRequest:
+      type: object
+      required: [customer_id, account_type]
+      properties:
+        customer_id:
+          type: string
+        account_type:
+          type: string
+          enum: [CHEQUING, SAVINGS]
+        initial_balance:
+          type: number
+          format: double
+    CreateAccountResponse:
+      type: object
+      properties:
+        account_id:
+          type: string
+        status:
+          type: string
+        account_type:
+          type: string
+        currency:
+          type: string
+        available_balance:
+          type: number
+          format: double
+    AccountSummaryResponse:
+      type: object
+      properties:
+        account_id:
+          type: string
+        customer_id:
+          type: string
+        account_type:
+          type: string
+        status:
+          type: string
+        currency:
+          type: string
+        available_balance:
+          type: number
+          format: double
+    AccountBalanceResponse:
+      type: object
+      properties:
+        account_id:
+          type: string
+        available_balance:
+          type: number
+          format: double
+        ledger_balance:
+          type: number
+          format: double
+        currency:
+          type: string
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string

@@ -1,5 +1,7 @@
 use crate::{
-    models::dto::{AccountBalanceQuery, CreateAccountRequest, ListAccountsQuery},
+    models::dto::{
+        AccountBalanceQuery, ApplyTransferRequest, CreateAccountRequest, ListAccountsQuery,
+    },
     utils::errors::AppError,
 };
 
@@ -43,6 +45,31 @@ pub fn validate_balance_query(query: &AccountBalanceQuery) -> Result<(), AppErro
         return Err(AppError::bad_request(
             "INVALID_ACCOUNT_ID",
             "account_id query parameter is required",
+        ));
+    }
+
+    Ok(())
+}
+
+pub fn validate_apply_transfer_payload(payload: &ApplyTransferRequest) -> Result<(), AppError> {
+    if payload.from_account_id.trim().is_empty() || payload.to_account_id.trim().is_empty() {
+        return Err(AppError::bad_request(
+            "INVALID_TRANSFER_ACCOUNTS",
+            "from_account_id and to_account_id are required",
+        ));
+    }
+
+    if payload.from_account_id == payload.to_account_id {
+        return Err(AppError::bad_request(
+            "INVALID_TRANSFER_ACCOUNTS",
+            "from_account_id and to_account_id must be different",
+        ));
+    }
+
+    if !payload.amount.is_finite() || payload.amount <= 0.0 {
+        return Err(AppError::bad_request(
+            "INVALID_TRANSFER_AMOUNT",
+            "amount must be a finite number greater than zero",
         ));
     }
 

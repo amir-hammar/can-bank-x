@@ -44,6 +44,23 @@ pub struct AccountBalanceResponse {
     pub currency: String,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct ApplyTransferRequest {
+    pub from_account_id: String,
+    pub to_account_id: String,
+    pub amount: f64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ApplyTransferResponse {
+    pub from_account_id: String,
+    pub to_account_id: String,
+    pub amount: f64,
+    pub currency: String,
+    pub from_available_balance: f64,
+    pub to_available_balance: f64,
+}
+
 #[derive(Debug, Serialize)]
 pub struct ErrorResponse {
     pub code: &'static str,

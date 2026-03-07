@@ -558,6 +558,337 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "04.03 Consulter historique des transactions",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "let data = [];",
+                  "try { data = pm.response.json(); } catch (e) {}",
+                  "pm.test('response is array', function () {",
+                  "  pm.expect(Array.isArray(data)).to.eql(true);",
+                  "});",
+                  "if (Array.isArray(data) && data.length > 0 && data[0].transfer_id) {",
+                  "  pm.collectionVariables.set('transfer_id', String(data[0].transfer_id));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Trace-Id",
+                "value": "{{trace_id}}"
+              },
+              {
+                "key": "X-Request-Id",
+                "value": "{{request_id}}"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_base_url}}/api/v1/transfers?account_id={{account_id}}&limit=25",
+              "host": [
+                "{{gateway_base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transfers"
+              ],
+              "query": [
+                {
+                  "key": "account_id",
+                  "value": "{{account_id}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "25"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "CU-05 Virement bancaire (interne / Interac simule)",
+      "item": [
+        {
+          "name": "05.01 Creer compte destination SAVINGS",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "let data = {};",
+                  "try { data = pm.response.json(); } catch (e) {}",
+                  "if (data.account_id) pm.collectionVariables.set('beneficiary_account_id', String(data.account_id));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Trace-Id",
+                "value": "{{trace_id}}"
+              },
+              {
+                "key": "X-Request-Id",
+                "value": "{{request_id}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer_id\": \"{{account_customer_id}}\",\n  \"account_type\": \"SAVINGS\",\n  \"initial_balance\": 250\n}"
+            },
+            "url": {
+              "raw": "{{gateway_base_url}}/api/v1/accounts/create",
+              "host": [
+                "{{gateway_base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "create"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "05.02 Effectuer virement",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('idempotency_key', 'idem-' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "let data = {};",
+                  "try { data = pm.response.json(); } catch (e) {}",
+                  "if (data.transfer_id) pm.collectionVariables.set('transfer_id', String(data.transfer_id));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Trace-Id",
+                "value": "{{trace_id}}"
+              },
+              {
+                "key": "X-Request-Id",
+                "value": "{{request_id}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer_id\": \"{{account_customer_id}}\",\n  \"from_account_id\": \"{{account_id}}\",\n  \"to_account_id\": \"{{beneficiary_account_id}}\",\n  \"amount\": 100,\n  \"idempotency_key\": \"{{idempotency_key}}\"\n}"
+            },
+            "url": {
+              "raw": "{{gateway_base_url}}/api/v1/transfers",
+              "host": [
+                "{{gateway_base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transfers"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "05.03 Consulter details du virement",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "let data = {};",
+                  "try { data = pm.response.json(); } catch (e) {}",
+                  "pm.test('transfer_id is present', function () {",
+                  "  pm.expect(data.transfer_id).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Trace-Id",
+                "value": "{{trace_id}}"
+              },
+              {
+                "key": "X-Request-Id",
+                "value": "{{request_id}}"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_base_url}}/api/v1/transfers/{{transfer_id}}",
+              "host": [
+                "{{gateway_base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transfers",
+                "{{transfer_id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "05.04 Lister historique client",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "let data = [];",
+                  "try { data = pm.response.json(); } catch (e) {}",
+                  "pm.test('response is array', function () {",
+                  "  pm.expect(Array.isArray(data)).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Trace-Id",
+                "value": "{{trace_id}}"
+              },
+              {
+                "key": "X-Request-Id",
+                "value": "{{request_id}}"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_base_url}}/api/v1/transfers?customer_id={{account_customer_id}}&limit=25",
+              "host": [
+                "{{gateway_base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transfers"
+              ],
+              "query": [
+                {
+                  "key": "customer_id",
+                  "value": "{{account_customer_id}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "25"
+                }
+              ]
+            }
+          },
+          "response": []
         }
       ]
     }
@@ -642,6 +973,18 @@
     {
       "key": "account_customer_id",
       "value": "{{username}}"
+    },
+    {
+      "key": "beneficiary_account_id",
+      "value": ""
+    },
+    {
+      "key": "idempotency_key",
+      "value": ""
+    },
+    {
+      "key": "transfer_id",
+      "value": ""
     }
   ]
 }
