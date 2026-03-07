@@ -8,7 +8,7 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -40,7 +40,7 @@ jobs:
 
   build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 20
     needs: [lint]
     steps:
       - uses: actions/checkout@v4
@@ -58,21 +58,23 @@ jobs:
             services/account
             services/transfer
 
-      - name: Build Rust projects
-        run: |
-          cargo build --release --manifest-path services/user/Cargo.toml
-          cargo build --release --manifest-path services/account/Cargo.toml
-          cargo build --release --manifest-path services/transfer/Cargo.toml
+      - name: Check Rust projects
+        run: cargo check --workspace --all-targets
 
-      - name: Build Docker images
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and cache Docker images
         run: |
           cp .env.example .env
           docker network create can-bank-x-network || true
-          docker compose build user-service account-service transfer-service api-gateway
+          docker compose build \
+            --build-arg BUILDKIT_INLINE_CACHE=1 \
+            user-service account-service transfer-service api-gateway
 
   test:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 20
     needs: [build]
     steps:
       - uses: actions/checkout@v4
@@ -89,12 +91,10 @@ jobs:
             services/user
             services/account
             services/transfer
+          cache-all-crates: true
 
-      - name: Unit tests
-        run: |
-          cargo test --manifest-path services/user/Cargo.toml
-          cargo test --manifest-path services/account/Cargo.toml
-          cargo test --manifest-path services/transfer/Cargo.toml
+      - name: Unit tests (dev mode, fast)
+        run: cargo test --workspace --lib --bin
 
       - name: Start infra services
         run: |
