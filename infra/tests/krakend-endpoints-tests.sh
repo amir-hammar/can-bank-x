@@ -62,7 +62,14 @@ if [ -z "$ACCESS_TOKEN" ]; then
 fi
 
 materialize_path() {
-  printf "%s" "$1" | \
+  endpoint="$1"
+
+  if [ "$endpoint" = "/api/v1/kyc/{path}" ]; then
+    printf "%s" "/api/v1/kyc/status"
+    return
+  fi
+
+  printf "%s" "$endpoint" | \
     sed 's/{path}/me/g; s/{a}/can-bank-x/g; s/{b}/login/g; s/{c}/resources/g; s/{d}/js/g; s/{e}/canbankx-theme.js/g; s/{f}/x/g; s/{g}/y/g'
 }
 
