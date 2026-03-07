@@ -60,9 +60,9 @@ jobs:
 
       - name: Run unit tests
         run: |
-          cargo test --manifest-path services/user/Cargo.toml --lib --bin
-          cargo test --manifest-path services/account/Cargo.toml --lib --bin
-          cargo test --manifest-path services/transfer/Cargo.toml --lib --bin
+          cargo test --manifest-path services/user/Cargo.toml --lib --bins
+          cargo test --manifest-path services/account/Cargo.toml --lib --bins
+          cargo test --manifest-path services/transfer/Cargo.toml --lib --bins
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
