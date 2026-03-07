@@ -1,8 +1,7 @@
 use crate::{
     models::dto::{
-        AccountBalanceQuery, AccountBalanceResponse, AccountSummaryResponse,
-        ApplyTransferRequest, ApplyTransferResponse, CreateAccountRequest, CreateAccountResponse,
-        ListAccountsQuery,
+        AccountBalanceQuery, AccountBalanceResponse, AccountSummaryResponse, ApplyTransferRequest,
+        ApplyTransferResponse, CreateAccountRequest, CreateAccountResponse, ListAccountsQuery,
     },
     repositories::{
         account_repository::{AccountRepository, ApplyTransferRepoError},
@@ -160,10 +159,7 @@ impl AccountService {
                 "account-service",
                 "ACCOUNT_TRANSFER_APPLIED",
                 "ACCOUNT_TRANSFER",
-                &format!(
-                    "{}->{}",
-                    payload.from_account_id, payload.to_account_id
-                ),
+                &format!("{}->{}", payload.from_account_id, payload.to_account_id),
                 trace_id,
             )
             .await;
