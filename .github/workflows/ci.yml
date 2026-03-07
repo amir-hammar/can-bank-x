@@ -23,22 +23,19 @@ jobs:
         with:
           workspaces: |
             services/user
-            # Next iteration:
-            # services/account
+            services/account
             # services/transfer
 
       - name: cargo fmt --check
         run: |
           cargo fmt --manifest-path services/user/Cargo.toml -- --check
-          # Next iteration:
-          # cargo fmt --manifest-path services/account/Cargo.toml -- --check
+          cargo fmt --manifest-path services/account/Cargo.toml -- --check
           # cargo fmt --manifest-path services/transfer/Cargo.toml -- --check
 
       - name: cargo clippy -D warnings
         run: |
           cargo clippy --manifest-path services/user/Cargo.toml -- -D warnings
-          # Next iteration:
-          # cargo clippy --manifest-path services/account/Cargo.toml -- -D warnings
+          cargo clippy --manifest-path services/account/Cargo.toml -- -D warnings
           # cargo clippy --manifest-path services/transfer/Cargo.toml -- -D warnings
 
   build:
@@ -58,24 +55,21 @@ jobs:
         with:
           workspaces: |
             services/user
-            # Next iteration:
-            # services/account
+            services/account
             # services/transfer
 
       - name: Build Rust projects
         run: |
           cargo build --release --manifest-path services/user/Cargo.toml
-          # Next iteration:
-          # cargo build --release --manifest-path services/account/Cargo.toml
+          cargo build --release --manifest-path services/account/Cargo.toml
           # cargo build --release --manifest-path services/transfer/Cargo.toml
 
       - name: Build Docker images
         run: |
           cp .env.example .env
           docker network create can-bank-x-network || true
-          docker compose build user-service api-gateway
-          # Next iteration:
-          # docker compose build account-service transfer-service
+          docker compose build user-service account-service api-gateway
+          # Next iteration: docker compose build transfer-service
 
   test:
     runs-on: ubuntu-24.04
@@ -94,15 +88,13 @@ jobs:
         with:
           workspaces: |
             services/user
-            # Next iteration:
-            # services/account
+            services/account
             # services/transfer
 
       - name: Unit tests
         run: |
           cargo test --manifest-path services/user/Cargo.toml
-          # Next iteration:
-          # cargo test --manifest-path services/account/Cargo.toml
+          cargo test --manifest-path services/account/Cargo.toml
           # cargo test --manifest-path services/transfer/Cargo.toml
 
       - name: Start infra services
@@ -142,8 +134,8 @@ jobs:
 
       - name: Start app services
         run: |
-          docker compose up -d --build --no-deps user-service api-gateway
-          # Next iteration: include account-service transfer-service
+          docker compose up -d --build --no-deps user-service account-service api-gateway
+          # Next iteration: include transfer-service
 
       - name: Integration tests
         run: sh infra/tests/integration-tests.sh

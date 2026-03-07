@@ -245,6 +245,7 @@
                   "  let data = {};",
                   "  try { data = pm.response.json(); } catch (e) {}",
                   "  if (data.id) pm.collectionVariables.set('client_profile_id', String(data.id));",
+                  "  if (data.username) pm.collectionVariables.set('account_customer_id', String(data.username));",
                   "}"
                 ],
                 "type": "text/javascript"
@@ -351,6 +352,214 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "CU-03 Ouverture d'un compte bancaire",
+      "item": [
+        {
+          "name": "03.01 Créer compte CHEQUING",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 201', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('response body exists', function () {",
+                  "  pm.expect(pm.response.text()).to.not.equal(undefined);",
+                  "});",
+                  "let data = {};",
+                  "try { data = pm.response.json(); } catch (e) {}",
+                  "if (data.account_id) pm.collectionVariables.set('account_id', String(data.account_id));",
+                  "let req = {};",
+                  "try { req = JSON.parse(pm.request.body.raw || '{}'); } catch (e) {}",
+                  "if (req.customer_id) pm.collectionVariables.set('account_customer_id', String(req.customer_id));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Trace-Id",
+                "value": "{{trace_id}}"
+              },
+              {
+                "key": "X-Request-Id",
+                "value": "{{request_id}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer_id\": \"{{account_customer_id}}\",\n  \"account_type\": \"CHEQUING\",\n  \"initial_balance\": 1000\n}"
+            },
+            "url": {
+              "raw": "{{gateway_base_url}}/api/v1/accounts/create",
+              "host": [
+                "{{gateway_base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "create"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "CU-04 Consultation des soldes et comptes",
+      "item": [
+        {
+          "name": "04.01 Lister comptes client",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "let data = [];",
+                  "try { data = pm.response.json(); } catch (e) {}",
+                  "pm.test('response is array', function () {",
+                  "  pm.expect(Array.isArray(data)).to.eql(true);",
+                  "});",
+                  "if (Array.isArray(data) && data.length > 0 && data[0].account_id) {",
+                  "  pm.collectionVariables.set('account_id', String(data[0].account_id));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Trace-Id",
+                "value": "{{trace_id}}"
+              },
+              {
+                "key": "X-Request-Id",
+                "value": "{{request_id}}"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_base_url}}/api/v1/accounts?customer_id={{account_customer_id}}",
+              "host": [
+                "{{gateway_base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts"
+              ],
+              "query": [
+                {
+                  "key": "customer_id",
+                  "value": "{{account_customer_id}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "04.02 Consulter solde du compte",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "let data = {};",
+                  "try { data = pm.response.json(); } catch (e) {}",
+                  "pm.test('contains account_id and available_balance', function () {",
+                  "  pm.expect(data).to.have.property('account_id');",
+                  "  pm.expect(data).to.have.property('available_balance');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Trace-Id",
+                "value": "{{trace_id}}"
+              },
+              {
+                "key": "X-Request-Id",
+                "value": "{{request_id}}"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_base_url}}/api/v1/accounts/balance?account_id={{account_id}}",
+              "host": [
+                "{{gateway_base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "balance"
+              ],
+              "query": [
+                {
+                  "key": "account_id",
+                  "value": "{{account_id}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
     }
   ],
   "variable": [
@@ -429,6 +638,10 @@
     {
       "key": "account_id",
       "value": ""
+    },
+    {
+      "key": "account_customer_id",
+      "value": "{{username}}"
     }
   ]
 }

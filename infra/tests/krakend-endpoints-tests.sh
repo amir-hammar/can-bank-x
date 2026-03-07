@@ -62,7 +62,14 @@ if [ -z "$ACCESS_TOKEN" ]; then
 fi
 
 materialize_path() {
-  printf "%s" "$1" | \
+  endpoint="$1"
+
+  if [ "$endpoint" = "/api/v1/kyc/{path}" ]; then
+    printf "%s" "/api/v1/kyc/status"
+    return
+  fi
+
+  printf "%s" "$endpoint" | \
     sed 's/{path}/me/g; s/{a}/can-bank-x/g; s/{b}/login/g; s/{c}/resources/g; s/{d}/js/g; s/{e}/canbankx-theme.js/g; s/{f}/x/g; s/{g}/y/g'
 }
 
@@ -77,6 +84,12 @@ EOF
   if [ "$endpoint" = "/api/v1/transfers/create" ]; then
     cat <<'EOF'
 {"from_account_id":"00000000-0000-0000-0000-000000000001","to_account_id":"00000000-0000-0000-0000-000000000002","amount":1.00,"currency":"CAD"}
+EOF
+    return
+  fi
+  if [ "$endpoint" = "/api/v1/accounts/create" ]; then
+    cat <<'EOF'
+{"customer_id":"cust_e2e_1","account_type":"CHEQUING"}
 EOF
     return
   fi

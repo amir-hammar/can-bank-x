@@ -220,18 +220,10 @@ Environment file:
 
 ### Folder structure
 
-- `01. Authentication & Identity`
-- `02. KYC & Client Verification`
-- `03. Client Profile`
-- `04. Bank Accounts`
-- `05. Transactions / History`
-- `06. Transfers & Payments`
-- `07. Credit Products`
-- `08. Notifications`
-- `09. Admin / Backoffice / Compliance`
-- `10. Health / Monitoring / Utility`
-- `11. Direct Backend (Debug)`
-- `_Missing or Not Yet Exposed in Gateway`
+- `CU-01 Inscription & Verification d'identite (KYC)`
+- `CU-02 Authentification & MFA`
+- `CU-03 Ouverture d'un compte bancaire`
+- `CU-04 Consultation des soldes et comptes`
 
 ### Required variables
 
@@ -257,6 +249,9 @@ The collection/environment defines and uses:
   - `CU-02 / 02.01 Ouvrir Page Connexion`
   - `CU-02 / 02.02 Get Profile`
   - `CU-02 / 02.03 Get KYC Status`
+  - `CU-03 / 03.01 Créer compte CHEQUING`
+  - `CU-04 / 04.01 Lister comptes client`
+  - `CU-04 / 04.02 Consulter solde du compte`
 
 ### UC-01 Step-by-step (Inscription & KYC)
 
@@ -282,6 +277,32 @@ The collection/environment defines and uses:
 7. Send `02.02 Get Profile` to retrieve customer info.
 8. Send `02.03 Get KYC Status` to retrieve KYC state.
 
+### UC-03 Step-by-step (Ouverture d'un compte bancaire)
+
+1. Ensure you already have a valid `access_token` from UC-02.
+2. Open folder `CU-03 Ouverture d'un compte bancaire`.
+3. Send `03.01 Créer compte CHEQUING`.
+4. Request body fields:
+  - `customer_id`: uses `{{account_customer_id}}` (auto-set from `CU-02 / 02.02 Get Profile` when `data.username` is present)
+  - `account_type`: `CHEQUING` or `SAVINGS`
+  - `initial_balance`: initial amount (example `1000`)
+5. Expected result: `201 Created`.
+6. Postman test script automatically stores:
+  - `account_id` into `{{account_id}}`
+  - the same request `customer_id` into `{{account_customer_id}}`
+
+### UC-04 Step-by-step (Consultation des soldes et comptes)
+
+1. Ensure you already created at least one account in UC-03.
+2. Open folder `CU-04 Consultation des soldes et comptes`.
+3. Send `04.01 Lister comptes client`.
+4. Query parameter `customer_id` uses `{{account_customer_id}}` (set by UC-03), to avoid mismatch with `{{username}}`.
+5. Expected result: `200 OK` with an array of accounts.
+6. Postman test script stores first `account_id` from list into `{{account_id}}`.
+7. Send `04.02 Consulter solde du compte`.
+8. Query parameter `account_id` uses saved `{{account_id}}`.
+9. Expected result: `200 OK` with `available_balance`, `ledger_balance`, and `currency`.
+
 ### Notes for evaluators
 
 - The collection includes basic test scripts on requests:
@@ -290,7 +311,7 @@ The collection/environment defines and uses:
   - token/ID extraction when available
 - Sign-in is browser-based (authorization code flow) to mirror sign-up behavior.
 - Refresh token and logout requests were intentionally removed from this collection.
-- Account/transfer routes are included because they are exposed in KrakenD, but these backends may return `502/503` in local runs if the related services are not started (they are currently commented in `docker-compose.yml`).
+- Account/transfer routes are included because they are exposed in KrakenD. `account-service` is enabled by default in `docker-compose.yml`; `transfer-service` may still return `502/503` in local runs if it is not started.
 - `_Missing or Not Yet Exposed in Gateway` documents CU items from the cahier that are not currently exposed as dedicated gateway routes.
 
 ### KrakenD routes covered by Postman
@@ -306,7 +327,9 @@ The collection/environment defines and uses:
   
 - `GET /api/v1/customers/{path}`
 - `GET /api/v1/kyc/{path}`
-- `GET /api/v1/accounts/{path}`
+- `POST /api/v1/accounts/create`
+- `GET /api/v1/accounts`
+- `GET /api/v1/accounts/balance`
 - `POST /api/v1/transfers/create`
 - `GET /api/v1/transfers/{path}`
 
