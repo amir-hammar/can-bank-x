@@ -169,6 +169,49 @@ impl TransferService {
             })
             .await;
 
+        let created_response = self.to_create_response(transfer.clone());
+        let transfer_detail_cache_key = format!("transfer:{}", created_response.transfer_id);
+        let transfer_detail_response = TransferDetailResponse {
+            transfer_id: created_response.transfer_id.clone(),
+            customer_id: created_response.customer_id.clone(),
+            from_account_id: created_response.from_account_id.clone(),
+            to_account_id: created_response.to_account_id.clone(),
+            amount: created_response.amount,
+            currency: created_response.currency.clone(),
+            status: created_response.status.clone(),
+            idempotency_key: transfer.idempotency_key.clone(),
+            created_at: created_response.created_at.clone(),
+        };
+        let _ = self
+            .cache
+            .set(&transfer_detail_cache_key, &transfer_detail_response, 300)
+            .await;
+
+        let transfer_list_cache_key = format!("transfers:{}", payload.customer_id);
+        let mut cached_transfers = self
+            .cache
+            .get::<Vec<TransferSummaryResponse>>(&transfer_list_cache_key)
+            .await
+            .unwrap_or_default();
+        cached_transfers.insert(
+            0,
+            TransferSummaryResponse {
+                transfer_id: created_response.transfer_id.clone(),
+                customer_id: created_response.customer_id.clone(),
+                from_account_id: created_response.from_account_id.clone(),
+                to_account_id: created_response.to_account_id.clone(),
+                amount: created_response.amount,
+                currency: created_response.currency.clone(),
+                status: created_response.status.clone(),
+                created_at: created_response.created_at.clone(),
+            },
+        );
+        cached_transfers.truncate(200);
+        let _ = self
+            .cache
+            .set(&transfer_list_cache_key, &cached_transfers, 300)
+            .await;
+
         let _ = self
             .cache
             .delete(&format!("balance:{}", payload.from_account_id))
@@ -177,11 +220,6 @@ impl TransferService {
             .cache
             .delete(&format!("balance:{}", to_account_id))
             .await;
-        let _ = self
-            .cache
-            .delete(&format!("transfers:{}", payload.customer_id))
-            .await;
-
         self.audit_repository
             .append(
                 "CUSTOMER",
@@ -193,7 +231,7 @@ impl TransferService {
             )
             .await;
 
-        Ok(self.to_create_response(transfer))
+        Ok(created_response)
     }
 
     pub async fn get_transfer_by_id(
@@ -201,6 +239,22 @@ impl TransferService {
         transfer_id: &str,
         trace_id: Option<String>,
     ) -> Result<TransferDetailResponse, AppError> {
+        let cache_key = format!("transfer:{}", transfer_id);
+        if let Some(cached) = self.cache.get::<TransferDetailResponse>(&cache_key).await {
+            self.audit_repository
+                .append(
+                    "SYSTEM",
+                    "transfer-service",
+                    "TRANSFER_VIEWED",
+                    "TRANSFER",
+                    transfer_id,
+                    trace_id.clone(),
+                )
+                .await;
+
+            return Ok(cached);
+        }
+
         let transfer = self
             .transfer_repository
             .find_by_id(transfer_id)
@@ -220,7 +274,7 @@ impl TransferService {
             )
             .await;
 
-        Ok(TransferDetailResponse {
+        let response = TransferDetailResponse {
             transfer_id: transfer.transfer_id,
             customer_id: transfer.customer_id,
             from_account_id: transfer.from_account_id,
@@ -230,7 +284,11 @@ impl TransferService {
             status: transfer.status,
             idempotency_key: transfer.idempotency_key,
             created_at: transfer.created_at,
-        })
+        };
+
+        let _ = self.cache.set(&cache_key, &response, 300).await;
+
+        Ok(response)
     }
 
     pub async fn list_transfers(
@@ -239,6 +297,31 @@ impl TransferService {
         trace_id: Option<String>,
     ) -> Result<Vec<TransferSummaryResponse>, AppError> {
         let limit = validators::validate_list_transfers(&query)?;
+
+        if let (Some(customer_id), None) =
+            (query.customer_id.as_deref(), query.account_id.as_deref())
+        {
+            let cache_key = format!("transfers:{}", customer_id);
+            if let Some(mut cached) = self
+                .cache
+                .get::<Vec<TransferSummaryResponse>>(&cache_key)
+                .await
+            {
+                cached.truncate(limit);
+                self.audit_repository
+                    .append(
+                        "SYSTEM",
+                        "transfer-service",
+                        "TRANSFER_HISTORY_VIEWED",
+                        "TRANSFER_QUERY",
+                        customer_id,
+                        trace_id.clone(),
+                    )
+                    .await;
+
+                return Ok(cached);
+            }
+        }
 
         let transfers = self
             .transfer_repository
@@ -265,7 +348,7 @@ impl TransferService {
             )
             .await;
 
-        Ok(transfers
+        let response: Vec<TransferSummaryResponse> = transfers
             .into_iter()
             .map(|transfer| TransferSummaryResponse {
                 transfer_id: transfer.transfer_id,
@@ -277,7 +360,16 @@ impl TransferService {
                 status: transfer.status,
                 created_at: transfer.created_at,
             })
-            .collect())
+            .collect();
+
+        if let (Some(customer_id), None) =
+            (query.customer_id.as_deref(), query.account_id.as_deref())
+        {
+            let cache_key = format!("transfers:{}", customer_id);
+            let _ = self.cache.set(&cache_key, &response, 300).await;
+        }
+
+        Ok(response)
     }
 
     async fn resolve_beneficiary_account(

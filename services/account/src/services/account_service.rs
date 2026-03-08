@@ -41,6 +41,40 @@ impl AccountService {
 
         let account = self.repository.create_account(&payload).await;
 
+        let balance_cache_key = format!("balance:{}", account.account_id);
+        let balance_response = AccountBalanceResponse {
+            account_id: account.account_id.clone(),
+            available_balance: account.available_balance,
+            ledger_balance: account.ledger_balance,
+            currency: account.currency.clone(),
+        };
+        let _ = self
+            .cache
+            .set(&balance_cache_key, &balance_response, 300)
+            .await;
+
+        let accounts_cache_key = format!("accounts:{}", payload.customer_id);
+        let accounts = self
+            .repository
+            .list_accounts_by_customer(&payload.customer_id)
+            .await;
+        let accounts_response: Vec<AccountSummaryResponse> = accounts
+            .into_iter()
+            .map(|current| AccountSummaryResponse {
+                account_id: current.account_id,
+                customer_id: current.customer_id,
+                account_type: current.account_type,
+                status: current.status,
+                currency: current.currency,
+                available_balance: current.available_balance,
+                is_default: current.is_default,
+            })
+            .collect();
+        let _ = self
+            .cache
+            .set(&accounts_cache_key, &accounts_response, 300)
+            .await;
+
         self.audit_repository
             .append(
                 "CUSTOMER",
