@@ -26,6 +26,43 @@ paths:
           description: Customer profile
         '404':
           description: Not found
+
+  /api/v1/customers/register:
+    post:
+      summary: Register customer and start KYC countdown
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Customer registered
+        '409':
+          description: Customer already registered
+  
+  /api/v1/customers/by-username:
+    get:
+      summary: Get customer by username (used for transfer beneficiary resolution)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: username
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Customer found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerByUsernameResponse'
+        '404':
+          description: Customer not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  
   /api/v1/kyc/submit:
     post:
       summary: Create or return pending KYC case
@@ -66,3 +103,17 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+  schemas:
+    CustomerByUsernameResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Customer UUID
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string

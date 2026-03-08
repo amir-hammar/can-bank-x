@@ -17,6 +17,10 @@ REALM="${REALM:-can-bank-x}"
 CLIENT_ID="${CLIENT_ID:-can-bank-x-api}"
 TEST_USER="${TEST_USER:-demo.customer}"
 TEST_PASSWORD="${TEST_PASSWORD:-Passw0rd!123}"
+TRANSFER_CUSTOMER_ID="${TRANSFER_CUSTOMER_ID:-cust_e2e_transfer}"
+FROM_ACCOUNT_ID=""
+TO_ACCOUNT_ID=""
+TRANSFER_ID=""
 
 wait_for() {
   url="$1"
@@ -69,8 +73,69 @@ materialize_path() {
     return
   fi
 
+  if [ "$endpoint" = "/api/v1/transfers" ]; then
+    printf "%s" "/api/v1/transfers?customer_id=$TRANSFER_CUSTOMER_ID&limit=10"
+    return
+  fi
+
+  if [ "$endpoint" = "/api/v1/transfers/{id}" ]; then
+    ensure_transfer_created
+    printf "%s" "/api/v1/transfers/$TRANSFER_ID"
+    return
+  fi
+
   printf "%s" "$endpoint" | \
-    sed 's/{path}/me/g; s/{a}/can-bank-x/g; s/{b}/login/g; s/{c}/resources/g; s/{d}/js/g; s/{e}/canbankx-theme.js/g; s/{f}/x/g; s/{g}/y/g'
+    sed 's/{path}/me/g; s/{id}/me/g; s/{a}/can-bank-x/g; s/{b}/login/g; s/{c}/resources/g; s/{d}/js/g; s/{e}/canbankx-theme.js/g; s/{f}/x/g; s/{g}/y/g'
+}
+
+ensure_transfer_accounts() {
+  if [ -n "$FROM_ACCOUNT_ID" ] && [ -n "$TO_ACCOUNT_ID" ]; then
+    return
+  fi
+
+  acc_a=$(curl -sS -X POST "$GATEWAY_BASE/api/v1/accounts/create" \
+    -H "Authorization: Bearer $ACCESS_TOKEN" \
+    -H "Content-Type: application/json" \
+    -H "X-Trace-Id: test-$((RANDOM))" \
+    -H "X-Request-Id: req-$((RANDOM))" \
+    -d "{\"customer_id\":\"$TRANSFER_CUSTOMER_ID\",\"account_type\":\"CHEQUING\",\"initial_balance\":1500}")
+  acc_b=$(curl -sS -X POST "$GATEWAY_BASE/api/v1/accounts/create" \
+    -H "Authorization: Bearer $ACCESS_TOKEN" \
+    -H "Content-Type: application/json" \
+    -H "X-Trace-Id: test-$((RANDOM))" \
+    -H "X-Request-Id: req-$((RANDOM))" \
+    -d "{\"customer_id\":\"$TRANSFER_CUSTOMER_ID\",\"account_type\":\"SAVINGS\",\"initial_balance\":500}")
+
+  FROM_ACCOUNT_ID=$(json_get "account_id" "$acc_a")
+  TO_ACCOUNT_ID=$(json_get "account_id" "$acc_b")
+
+  if [ -z "$FROM_ACCOUNT_ID" ] || [ -z "$TO_ACCOUNT_ID" ]; then
+    echo "Could not prepare transfer test accounts" | tee -a "$LOG_FILE"
+    echo "$acc_a" | tee -a "$LOG_FILE"
+    echo "$acc_b" | tee -a "$LOG_FILE"
+    exit 1
+  fi
+}
+
+ensure_transfer_created() {
+  if [ -n "$TRANSFER_ID" ]; then
+    return
+  fi
+
+  ensure_transfer_accounts
+  transfer_json=$(curl -sS -X POST "$GATEWAY_BASE/api/v1/transfers" \
+    -H "Authorization: Bearer $ACCESS_TOKEN" \
+    -H "Content-Type: application/json" \
+    -H "X-Trace-Id: test-$((RANDOM))" \
+    -H "X-Request-Id: req-$((RANDOM))" \
+    -d "{\"customer_id\":\"$TRANSFER_CUSTOMER_ID\",\"from_account_id\":\"$FROM_ACCOUNT_ID\",\"to_account_id\":\"$TO_ACCOUNT_ID\",\"amount\":10.0,\"idempotency_key\":\"idem-$RANDOM\"}")
+
+  TRANSFER_ID=$(json_get "transfer_id" "$transfer_json")
+  if [ -z "$TRANSFER_ID" ]; then
+    echo "Could not prepare transfer fixture" | tee -a "$LOG_FILE"
+    echo "$transfer_json" | tee -a "$LOG_FILE"
+    exit 1
+  fi
 }
 
 post_body_for() {
@@ -81,9 +146,10 @@ client_id=$CLIENT_ID&username=$TEST_USER&password=$TEST_PASSWORD&grant_type=pass
 EOF
     return
   fi
-  if [ "$endpoint" = "/api/v1/transfers/create" ]; then
+  if [ "$endpoint" = "/api/v1/transfers" ]; then
+    ensure_transfer_accounts
     cat <<'EOF'
-{"from_account_id":"00000000-0000-0000-0000-000000000001","to_account_id":"00000000-0000-0000-0000-000000000002","amount":1.00,"currency":"CAD"}
+{"customer_id":"__TRANSFER_CUSTOMER_ID__","from_account_id":"__FROM_ACCOUNT_ID__","to_account_id":"__TO_ACCOUNT_ID__","amount":1.00,"idempotency_key":"__IDEMPOTENCY_KEY__"}
 EOF
     return
   fi
@@ -106,19 +172,30 @@ should_accept_404() {
 TOTAL=0
 FAILED=0
 
-# Extract endpoints from gateway/krakend.json using grep and sed
-grep -o '"endpoint": "[^"]*"' gateway/krakend.json | sed 's/"endpoint": "//; s/"$//' | while read endpoint; do
-  # Skip empty lines
+# Extract endpoint/method pairs while preserving duplicates such as GET+POST on the same endpoint.
+awk '
+  /"endpoint":/ {
+    endpoint=$0
+    gsub(/^[[:space:]]*"endpoint": "/, "", endpoint)
+    gsub(/",?$/, "", endpoint)
+    method="GET"
+    capture=1
+    next
+  }
+  capture && /"method":/ {
+    method=$0
+    gsub(/^[[:space:]]*"method": "/, "", method)
+    gsub(/",?$/, "", method)
+    print method "\t" endpoint
+    capture=0
+    next
+  }
+  capture && /"backend":/ {
+    print method "\t" endpoint
+    capture=0
+  }
+' gateway/krakend.json | while IFS="$(printf '\t')" read method endpoint; do
   [ -z "$endpoint" ] && continue
-  
-  # Determine method based on endpoint configuration
-  # Default to GET, check if endpoint has POST in config
-  method="GET"
-  if grep -q "\"endpoint\": \"$endpoint\"" gateway/krakend.json; then
-    # Look for method in the config block for this endpoint
-    method=$(grep -A 1 "\"endpoint\": \"$endpoint\"" gateway/krakend.json | grep -o '"method": "[^"]*"' | head -1 | sed 's/"method": "//; s/"$//')
-    [ -z "$method" ] && method="GET"
-  fi
 
   path=$(materialize_path "$endpoint")
   url="$GATEWAY_BASE$path"
@@ -126,6 +203,14 @@ grep -o '"endpoint": "[^"]*"' gateway/krakend.json | sed 's/"endpoint": "//; s/"
   code=""
   if [ "$method" = "POST" ]; then
     body=$(post_body_for "$endpoint")
+    if [ "$endpoint" = "/api/v1/transfers" ]; then
+      body=$(printf "%s" "$body" \
+        | sed "s/__TRANSFER_CUSTOMER_ID__/$TRANSFER_CUSTOMER_ID/g" \
+        | sed "s/__FROM_ACCOUNT_ID__/$FROM_ACCOUNT_ID/g" \
+        | sed "s/__TO_ACCOUNT_ID__/$TO_ACCOUNT_ID/g" \
+        | sed "s/__IDEMPOTENCY_KEY__/idem-$RANDOM/g")
+    fi
+
     if [ "$endpoint" = "/auth/realms/can-bank-x/protocol/openid-connect/token" ]; then
       code=$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$url" -H "Content-Type: application/x-www-form-urlencoded" --data "$body")
     else

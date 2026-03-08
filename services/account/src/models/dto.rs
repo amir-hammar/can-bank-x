@@ -14,6 +14,7 @@ pub struct CreateAccountResponse {
     pub account_type: String,
     pub currency: String,
     pub available_balance: f64,
+    pub is_default: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -26,6 +27,11 @@ pub struct AccountBalanceQuery {
     pub account_id: String,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct DefaultAccountQuery {
+    pub customer_id: String,
+}
+
 #[derive(Debug, Serialize)]
 pub struct AccountSummaryResponse {
     pub account_id: String,
@@ -34,6 +40,7 @@ pub struct AccountSummaryResponse {
     pub status: String,
     pub currency: String,
     pub available_balance: f64,
+    pub is_default: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -42,6 +49,28 @@ pub struct AccountBalanceResponse {
     pub available_balance: f64,
     pub ledger_balance: f64,
     pub currency: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct DefaultAccountResponse {
+    pub account_id: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ApplyTransferRequest {
+    pub from_account_id: String,
+    pub to_account_id: String,
+    pub amount: f64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ApplyTransferResponse {
+    pub from_account_id: String,
+    pub to_account_id: String,
+    pub amount: f64,
+    pub currency: String,
+    pub from_available_balance: f64,
+    pub to_available_balance: f64,
 }
 
 #[derive(Debug, Serialize)]

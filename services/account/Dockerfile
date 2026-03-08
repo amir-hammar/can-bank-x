@@ -1,8 +1,12 @@
+FROM rust:1.83.0-bookworm AS deps
+WORKDIR /app
+COPY Cargo.toml .
+RUN mkdir src && echo 'fn main() {}' > src/main.rs && cargo build --release && rm -rf src
+
 FROM rust:1.83.0-bookworm AS builder
 WORKDIR /app
-
-COPY Cargo.toml Cargo.toml
-COPY src src
+COPY --from=deps /app/target target
+COPY . .
 RUN cargo build --release
 
 FROM debian:bookworm-slim

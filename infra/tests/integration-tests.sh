@@ -10,7 +10,7 @@ sh infra/tests/restart-required-services.sh
 mkdir -p artifacts
 
 echo "Running service health checks..." | tee artifacts/integration.log
-for service in user-service account-service; do
+for service in user-service account-service transfer-service; do
   docker compose exec -T "$service" sh -c "wget -qO- http://localhost:8080/health" >> artifacts/integration.log
   echo "${service} health OK" >> artifacts/integration.log
 done

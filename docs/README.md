@@ -167,6 +167,8 @@ Apply migrations manually:
 - `GET /api/v1/auth/me`
  
 - `GET /api/v1/customers/me`
+- `POST /api/v1/customers/register` - Register customer and start KYC countdown
+- `GET /api/v1/customers/by-username` - Resolve beneficiary username to customer ID (used for transfer beneficiary resolution)
 - `POST /api/v1/kyc/submit`
 - `POST /api/v1/kyc/confirm`
 - `GET /api/v1/kyc/status`
@@ -184,6 +186,51 @@ KYC mock verification data is stored in:
 
 This file is configurable and intended as the shared location for future mock datasets.
 
+## account-service endpoints
+
+- `POST /api/v1/accounts/create` - Create a new account
+- `GET /api/v1/accounts` - List customer accounts
+- `GET /api/v1/accounts/balance` - Get account balance
+- `GET /api/v1/accounts/default` - Get customer's default account (used for beneficiary resolution in transfers)
+
+**Default Account Selection**: The first account created by a customer is automatically marked as their default account. This default account is used when customers receive transfers using beneficiary username instead of account ID.
+
+## Beneficiary Username Transfer Feature
+
+The transfer service now supports resolving beneficiary accounts by username instead of requiring explicit account IDs. This provides a more user-friendly transfer experience.
+
+### How It Works
+
+1. **Two Accounts Required**: To test transfers, you need to create two accounts:
+   - One account for the sender (source)
+   - One account for the receiver (beneficiary)
+   
+2. **Create Beneficiary Account**: Create a second customer account or ensure the beneficiary customer has at least one account. The first account created by any customer automatically becomes their default account.
+
+3. **Transfer by Username**: Send a transfer request with the beneficiary's username:
+   ```json
+   {
+     "customer_id": "sender_customer_id",
+     "from_account_id": "sender_account_id",
+     "beneficiary_username": "john_doe",
+     "amount": 100.00,
+     "idempotency_key": "unique_key"
+   }
+   ```
+
+4. **Automatic Resolution**: The transfer service will:
+   - Look up the beneficiary by username (calls `GET /api/v1/customers/by-username`)
+   - Retrieve their default account (calls `GET /api/v1/accounts/default`)
+   - Execute the transfer to that account
+
+### Error Codes
+
+| Code | Status | Description |
+|------|--------|-------------|
+| `BENEFICIARY_NOT_FOUND` | 404 | Username doesn't exist in system |
+| `BENEFICIARY_NO_ACCOUNT` | 404 | Beneficiary exists but has no default account |
+| `INVALID_TRANSFER` | 400 | Missing/invalid `beneficiary_username` field |
+
 Error responses follow:
 
 ```json
@@ -197,7 +244,9 @@ Error responses follow:
 
 ## API artifacts
 
-- OpenAPI: `docs/openapi-user-service.yaml`
+- OpenAPI user-service: `docs/openapi-user-service.yaml`
+- OpenAPI account-service: `docs/openapi-account-service.yaml`
+- OpenAPI transfer-service: `docs/openapi-transfer-service.yaml`
 - Postman collection: `docs/collections/can-bank-x.postman_collection.json`
 - Postman local env: `docs/collections/can-bank-x.local.postman_environment.json`
 
@@ -223,7 +272,8 @@ Environment file:
 - `CU-01 Inscription & Verification d'identite (KYC)`
 - `CU-02 Authentification & MFA`
 - `CU-03 Ouverture d'un compte bancaire`
-- `CU-04 Consultation des soldes et comptes`
+- `CU-04 Consultation des soldes et historiques`
+- `CU-05 Virement bancaire (interne / Interac simule)`
 
 ### Required variables
 
@@ -245,13 +295,20 @@ The collection/environment defines and uses:
 1. Import both files in Postman.
 2. Select environment `can-bank-x local`.
 3. Run this minimal flow top-to-bottom:
-  - `CU-01 / 01.01 Ouvrir Page Inscription`
-  - `CU-02 / 02.01 Ouvrir Page Connexion`
-  - `CU-02 / 02.02 Get Profile`
-  - `CU-02 / 02.03 Get KYC Status`
-  - `CU-03 / 03.01 Créer compte CHEQUING`
-  - `CU-04 / 04.01 Lister comptes client`
-  - `CU-04 / 04.02 Consulter solde du compte`
+  - `CU-01 / 01.01 Ouvrir Page Inscription` - Register new customer
+  - `CU-02 / 02.01 Ouvrir Page Connexion` - Login customer
+  - `CU-02 / 02.02 Get Profile` - Get customer profile
+  - `CU-02 / 02.03 Get KYC Status` - Check KYC status
+  - `CU-03 / 03.01 Créer compte CHEQUING` - Create first account (becomes default)
+  - `CU-04 / 04.01 Lister comptes client` - List accounts
+  - `CU-04 / 04.02 Consulter solde du compte` - Check account balance
+  - `CU-04 / 04.03 Consulter historique des transactions` - View transaction history
+  - **Optional (for transfer testing with a second customer)**: Repeat UC-01 and UC-03 with a different user
+  - `CU-05 / 05.02 Effectuer virement par username` - **NEW**: Transfer by beneficiary username (recommended)
+  - `CU-05 / 05.03 Consulter details du virement` - View transfer details
+  - `CU-05 / 05.04 Lister historique client` - View transfer history
+
+**Note for Transfers**: You need at least two customer accounts to perform a transfer. The sender and receiver can be different customers. Use the new beneficiary username method (05.02) for a more user-friendly experience.
 
 ### UC-01 Step-by-step (Inscription & KYC)
 
@@ -260,9 +317,14 @@ The collection/environment defines and uses:
 3. In Postman request Authorization tab, scroll all the way down, click `Clear Cookies`, then click `Get New Access Token`.
 4. The Keycloak page opens up. Choose `Register` (might need to scroll down a bit).
 5. Fill all fields and submit registration.
-6. If you do not see `Register` or all custom fields, scroll down in the Keycloak page.
-7. Copy the returned `access_token`, open `CU-02 / 02.02 Get Profile`, then in the request Authorization tab paste it in `access_token`. Make sure there are no trailing spaces or newline characters at the end of the pasted token because it may prevent the token from working.
-8. You can now call:
+6. For KYC to be `APPROVED` with the mock verifier, the registration values must match exactly:
+  - `Full name`: `Postman Gateway` or `Test`
+  - `NAS`: `123456789`
+  - Keep exact spelling/casing and no extra spaces.
+  - If another full name or NAS is used, KYC may be rejected.
+7. If you do not see `Register` or all custom fields, scroll down in the Keycloak page.
+8. Copy the returned `access_token`, open `CU-02 / 02.02 Get Profile`, then in the request Authorization tab paste it in `access_token`. Make sure there are no trailing spaces or newline characters at the end of the pasted token because it may prevent the token from working.
+9. You can now call:
   - `CU-02 / 02.02 Get Profile`
   - `CU-02 / 02.03 Get KYC Status`
 
@@ -291,10 +353,10 @@ The collection/environment defines and uses:
   - `account_id` into `{{account_id}}`
   - the same request `customer_id` into `{{account_customer_id}}`
 
-### UC-04 Step-by-step (Consultation des soldes et comptes)
+### UC-04 Step-by-step (Consultation des soldes et historiques)
 
 1. Ensure you already created at least one account in UC-03.
-2. Open folder `CU-04 Consultation des soldes et comptes`.
+2. Open folder `CU-04 Consultation des soldes et historiques`.
 3. Send `04.01 Lister comptes client`.
 4. Query parameter `customer_id` uses `{{account_customer_id}}` (set by UC-03), to avoid mismatch with `{{username}}`.
 5. Expected result: `200 OK` with an array of accounts.
@@ -302,6 +364,38 @@ The collection/environment defines and uses:
 7. Send `04.02 Consulter solde du compte`.
 8. Query parameter `account_id` uses saved `{{account_id}}`.
 9. Expected result: `200 OK` with `available_balance`, `ledger_balance`, and `currency`.
+10. Send `04.03 Consulter historique des transactions`.
+11. Query parameters use `account_id={{account_id}}` and `limit=25`.
+12. Expected result: `200 OK` with a transfer history array.
+
+### UC-05 Step-by-step (Virement bancaire - Transfer by Username)
+
+**Prerequisites**: You need at least two customer accounts to perform a transfer. Follow UC-03 to create the first account, then exchange credentials with another user or create a second test customer.
+
+1. Ensure you already have `{{account_id}}` and `{{account_customer_id}}` from UC-03/UC-04.
+2. Open folder `CU-05 Virement bancaire (interne / Interac simule)`.
+3. **Create beneficiary account** (if testing with a second customer user):
+   - If using a different customer for the beneficiary, ensure they have at least one account (created via UC-03)
+   - The beneficiary's first account becomes their default and will receive transfers
+4. Send `05.02 Effectuer virement par username` (NEW - Recommended).
+5. Request body uses `POST /api/v1/transfers` with beneficiary username:
+   - Replace `recipient_username_here` with the actual beneficiary's username
+   - The transfer service will automatically resolve the username to their default account
+6. Expected result: `201 Created`, transfer id stored into `{{transfer_id}}`.
+7. Send `05.03 Consulter details du virement` to validate transfer retrieval by id.
+8. Send `05.04 Lister historique client` to validate transfer history by `customer_id`.
+
+### UC-05 Step-by-step (LEGACY - Transfer by Account ID)
+
+If you prefer the explicit account ID method:
+
+1. Ensure you already have `{{account_id}}` and `{{account_customer_id}}` from UC-03/UC-04.
+2. Open folder `CU-05 Virement bancaire (interne / Interac simule)`.
+3. Send `05.01 Créer compte destination SAVINGS`.
+4. Expected result: `201 Created`, destination account stored into `{{beneficiary_account_id}}`.
+5. Send `05.02.alt Effectuer virement par account ID (legacy)`.
+6. Request body uses `POST /api/v1/transfers` with explicit `to_account_id`.
+7. Expected result: `201 Created`, transfer id stored into `{{transfer_id}}`.
 
 ### Notes for evaluators
 
@@ -311,7 +405,11 @@ The collection/environment defines and uses:
   - token/ID extraction when available
 - Sign-in is browser-based (authorization code flow) to mirror sign-up behavior.
 - Refresh token and logout requests were intentionally removed from this collection.
-- Account/transfer routes are included because they are exposed in KrakenD. `account-service` is enabled by default in `docker-compose.yml`; `transfer-service` may still return `502/503` in local runs if it is not started.
+- Account/transfer routes are included and enabled by default in `docker-compose.yml`.
+- **NEW**: Transfers now support beneficiary username resolution (`05.02 Effectuer virement par username`), which is the recommended method. The legacy account ID method is still available (`05.02.alt Effectuer virement par account ID`).
+- To test transfers, you need to create at least two accounts:
+  - One for the sender (source account)
+  - One for the receiver (beneficiary - their first account becomes default and receives transfers)
 - `_Missing or Not Yet Exposed in Gateway` documents CU items from the cahier that are not currently exposed as dedicated gateway routes.
 
 ### KrakenD routes covered by Postman
@@ -324,14 +422,15 @@ The collection/environment defines and uses:
 - `GET /resources/{a}/{b}/{c}/{d}/{e}`
 - `POST /auth/realms/can-bank-x/protocol/openid-connect/token`
 - `GET /api/v1/auth/me`
-  
-- `GET /api/v1/customers/{path}`
+- `GET /api/v1/customers/{path}` (includes `/by-username`, `/me`, `/register`)
 - `GET /api/v1/kyc/{path}`
 - `POST /api/v1/accounts/create`
-- `GET /api/v1/accounts`
-- `GET /api/v1/accounts/balance`
-- `POST /api/v1/transfers/create`
-- `GET /api/v1/transfers/{path}`
+- `GET /api/v1/accounts` - List accounts
+- `GET /api/v1/accounts/balance` - Get account balance
+- `GET /api/v1/accounts/default` - Get default account (for beneficiary resolution)
+- `POST /api/v1/transfers` - Create transfer by username (NEW)
+- `GET /api/v1/transfers` - List transfers
+- `GET /api/v1/transfers/{id}` - Get transfer details
 
 ## Keycloak + KrakenD Full Test Commands
 

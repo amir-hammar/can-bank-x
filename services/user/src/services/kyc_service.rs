@@ -248,12 +248,42 @@ pub async fn resolve_kyc_status_for_customer(
                 decision_available_in_seconds: 0,
             })
         }
-        KycDecision::Rejected => Ok(KycStatusResponse {
-            customer_id: case.customer_id,
-            kyc_case_id: case.id,
-            status: "REJECTED".to_string(),
-            approved: Some(false),
-            decision_available_in_seconds: 0,
-        }),
+        KycDecision::Rejected => {
+            let mut tx = pool
+                .begin()
+                .await
+                .map_err(|_| ServiceError::internal("Could not start transaction"))?;
+
+            let rejected = kyc_repository::confirm_kyc(&mut tx, &customer.customer.id, false)
+                .await
+                .map_err(|_| ServiceError::internal("Failed to update KYC status"))?;
+
+            audit_repository::record_event(
+                &mut tx,
+                audit_repository::AuditEvent {
+                    actor_type: "SYSTEM",
+                    actor_id: "kyc-mock-engine",
+                    action: "KYC_CONFIRMED",
+                    entity_type: "KYC_CASE",
+                    entity_id: &rejected.id,
+                    metadata: Some(serde_json::json!({ "approved": false, "mode": "mock-data" })),
+                    trace_id,
+                },
+            )
+            .await
+            .map_err(|_| ServiceError::internal("Failed to record audit event"))?;
+
+            tx.commit()
+                .await
+                .map_err(|_| ServiceError::internal("Could not commit transaction"))?;
+
+            Ok(KycStatusResponse {
+                customer_id: rejected.customer_id,
+                kyc_case_id: rejected.id,
+                status: "REJECTED".to_string(),
+                approved: Some(false),
+                decision_available_in_seconds: 0,
+            })
+        }
     }
 }

@@ -6,11 +6,13 @@ CREATE TABLE IF NOT EXISTS accounts (
     type TEXT NOT NULL CHECK (type IN ('CHEQUING', 'SAVINGS')),
     currency TEXT NOT NULL DEFAULT 'CAD',
     status TEXT NOT NULL CHECK (status IN ('OPEN', 'CLOSED')),
+    is_default BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_accounts_customer_id ON accounts(customer_id);
+CREATE INDEX IF NOT EXISTS idx_accounts_customer_id_default ON accounts(customer_id) WHERE is_default = true;
 
 CREATE TABLE IF NOT EXISTS account_balances (
     account_id UUID PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,

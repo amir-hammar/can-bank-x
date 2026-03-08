@@ -77,6 +77,22 @@ pub async fn get_customer_with_profile_by_sub(
     Ok(Some(CustomerWithProfile { customer, profile }))
 }
 
+pub async fn get_customer_by_username(
+    pool: &Pool<Postgres>,
+    username: &str,
+) -> Result<Option<Customer>, sqlx::Error> {
+    sqlx::query_as::<_, Customer>(
+        r#"
+        SELECT id::text, keycloak_sub, username, email, status, created_at, updated_at
+        FROM customers
+        WHERE username = $1
+        "#,
+    )
+    .bind(username)
+    .fetch_optional(pool)
+    .await
+}
+
 pub async fn rebind_customer_sub_by_identity(
     pool: &Pool<Postgres>,
     new_keycloak_sub: &str,

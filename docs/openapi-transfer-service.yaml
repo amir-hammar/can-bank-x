@@ -1,0 +1,178 @@
+openapi: 3.0.3
+info:
+  title: can-bank-x transfer-service API
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+paths:
+  /api/v1/transfers:
+    post:
+      summary: Create a transfer (UC-05)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTransferRequest'
+      responses:
+        '201':
+          description: Transfer accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateTransferResponse'
+        '400':
+          description: Invalid transfer payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '424':
+          description: Downstream dependency unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      summary: List transfers (history for UC-04)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: customer_id
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: account_id
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+      responses:
+        '200':
+          description: Transfer history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TransferSummaryResponse'
+        '400':
+          description: Missing or invalid filters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/transfers/{id}:
+    get:
+      summary: Get transfer details by id
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Transfer details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferDetailResponse'
+        '404':
+          description: Transfer not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    CreateTransferRequest:
+      type: object
+      required: [customer_id, from_account_id, beneficiary_username, amount, idempotency_key]
+      properties:
+        customer_id:
+          type: string
+        from_account_id:
+          type: string
+        beneficiary_username:
+          type: string
+          description: Username of the beneficiary (destination customer). Will be resolved to their default account.
+        amount:
+          type: number
+          format: double
+        idempotency_key:
+          type: string
+    CreateTransferResponse:
+      type: object
+      properties:
+        transfer_id:
+          type: string
+        status:
+          type: string
+        customer_id:
+          type: string
+        from_account_id:
+          type: string
+        to_account_id:
+          type: string
+        amount:
+          type: number
+          format: double
+        currency:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    TransferSummaryResponse:
+      type: object
+      properties:
+        transfer_id:
+          type: string
+        customer_id:
+          type: string
+        from_account_id:
+          type: string
+        to_account_id:
+          type: string
+        amount:
+          type: number
+          format: double
+        currency:
+          type: string
+        status:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    TransferDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/TransferSummaryResponse'
+        - type: object
+          properties:
+            idempotency_key:
+              type: string
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
