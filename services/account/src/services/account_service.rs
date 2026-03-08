@@ -249,6 +249,14 @@ impl AccountService {
             .cache
             .delete(&format!("balance:{}", payload.to_account_id))
             .await;
+        let _ = self
+            .cache
+            .delete(&format!("accounts:{}", from_account.customer_id))
+            .await;
+        let _ = self
+            .cache
+            .delete(&format!("accounts:{}", to_account.customer_id))
+            .await;
 
         self.audit_repository
             .append(
