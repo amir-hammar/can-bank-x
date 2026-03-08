@@ -31,7 +31,12 @@ impl AppState {
         let audit_repository = AuditRepository::new(pool);
 
         Self {
-            transfer_service: TransferService::new(config, transfer_repository, audit_repository, cache),
+            transfer_service: TransferService::new(
+                config,
+                transfer_repository,
+                audit_repository,
+                cache,
+            ),
         }
     }
 }

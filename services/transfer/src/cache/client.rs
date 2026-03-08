@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
 
 #[async_trait]
 pub trait Cache: Clone + Send + Sync {
@@ -65,33 +65,33 @@ impl RedisCache {
         }
 
         match redis::Client::open(redis_url) {
-            Ok(client) => {
-                match client.get_connection_manager().await {
-                    Ok(manager) => {
-                        log::info!("Redis cache enabled and connected to: {}", redis_url);
-                        Self {
-                            client: Some(manager),
-                            ttl,
-                            enabled: true,
-                        }
-                    }
-                    Err(e) => {
-                        log::warn!(
-                            "Failed to connect to Redis at {}: {}. Falling back to database access.",
-                            redis_url, e
-                        );
-                        Self {
-                            client: None,
-                            ttl,
-                            enabled: false,
-                        }
+            Ok(client) => match client.get_connection_manager().await {
+                Ok(manager) => {
+                    log::info!("Redis cache enabled and connected to: {}", redis_url);
+                    Self {
+                        client: Some(manager),
+                        ttl,
+                        enabled: true,
                     }
                 }
-            }
+                Err(e) => {
+                    log::warn!(
+                        "Failed to connect to Redis at {}: {}. Falling back to database access.",
+                        redis_url,
+                        e
+                    );
+                    Self {
+                        client: None,
+                        ttl,
+                        enabled: false,
+                    }
+                }
+            },
             Err(e) => {
                 log::warn!(
                     "Invalid Redis URL {}: {}. Falling back to database access.",
-                    redis_url, e
+                    redis_url,
+                    e
                 );
                 Self {
                     client: None,
@@ -117,18 +117,16 @@ impl Cache for RedisCache {
                     .query_async::<_, Option<String>>(client)
                     .await
                 {
-                    Ok(Some(data)) => {
-                        match serde_json::from_str::<T>(&data) {
-                            Ok(value) => {
-                                log::debug!("Cache hit: {}", key);
-                                Some(value)
-                            }
-                            Err(e) => {
-                                log::warn!("Failed to deserialize cache value for {}: {}", key, e);
-                                None
-                            }
+                    Ok(Some(data)) => match serde_json::from_str::<T>(&data) {
+                        Ok(value) => {
+                            log::debug!("Cache hit: {}", key);
+                            Some(value)
                         }
-                    }
+                        Err(e) => {
+                            log::warn!("Failed to deserialize cache value for {}: {}", key, e);
+                            None
+                        }
+                    },
                     Ok(None) => {
                         log::debug!("Cache miss: {}", key);
                         None
@@ -148,33 +146,31 @@ impl Cache for RedisCache {
                 log::debug!("Cache set skipped (Redis unavailable): {}", key);
                 false
             }
-            Some(client) => {
-                match serde_json::to_string(value) {
-                    Ok(serialized) => {
-                        match redis::cmd("SET")
-                            .arg(key)
-                            .arg(&serialized)
-                            .arg("EX")
-                            .arg(ttl)
-                            .query_async::<_, ()>(client)
-                            .await
-                        {
-                            Ok(_) => {
-                                log::debug!("Cache set with TTL {} seconds: {}", ttl, key);
-                                true
-                            }
-                            Err(e) => {
-                                log::warn!("Cache set error for {}: {}", key, e);
-                                false
-                            }
+            Some(client) => match serde_json::to_string(value) {
+                Ok(serialized) => {
+                    match redis::cmd("SET")
+                        .arg(key)
+                        .arg(&serialized)
+                        .arg("EX")
+                        .arg(ttl)
+                        .query_async::<_, ()>(client)
+                        .await
+                    {
+                        Ok(_) => {
+                            log::debug!("Cache set with TTL {} seconds: {}", ttl, key);
+                            true
+                        }
+                        Err(e) => {
+                            log::warn!("Cache set error for {}: {}", key, e);
+                            false
                         }
                     }
-                    Err(e) => {
-                        log::warn!("Failed to serialize value for cache key {}: {}", key, e);
-                        false
-                    }
                 }
-            }
+                Err(e) => {
+                    log::warn!("Failed to serialize value for cache key {}: {}", key, e);
+                    false
+                }
+            },
         }
     }
 

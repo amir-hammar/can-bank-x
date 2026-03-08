@@ -71,7 +71,11 @@ impl AccountService {
 
         let cache_key = format!("accounts:{}", &query.customer_id);
 
-        if let Some(cached) = self.cache.get::<Vec<AccountSummaryResponse>>(&cache_key).await {
+        if let Some(cached) = self
+            .cache
+            .get::<Vec<AccountSummaryResponse>>(&cache_key)
+            .await
+        {
             self.audit_repository
                 .append(
                     "CUSTOMER",
@@ -103,10 +107,7 @@ impl AccountService {
             })
             .collect();
 
-        let _ = self
-            .cache
-            .set(&cache_key, &response, 300)
-            .await;
+        let _ = self.cache.set(&cache_key, &response, 300).await;
 
         self.audit_repository
             .append(
@@ -158,10 +159,7 @@ impl AccountService {
             currency: account.currency,
         };
 
-        let _ = self
-            .cache
-            .set(&cache_key, &response, 300)
-            .await;
+        let _ = self.cache.set(&cache_key, &response, 300).await;
 
         self.audit_repository
             .append(
@@ -209,8 +207,14 @@ impl AccountService {
                 ),
             })?;
 
-        let _ = self.cache.delete(&format!("balance:{}", payload.from_account_id)).await;
-        let _ = self.cache.delete(&format!("balance:{}", payload.to_account_id)).await;
+        let _ = self
+            .cache
+            .delete(&format!("balance:{}", payload.from_account_id))
+            .await;
+        let _ = self
+            .cache
+            .delete(&format!("balance:{}", payload.to_account_id))
+            .await;
 
         self.audit_repository
             .append(

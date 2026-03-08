@@ -169,9 +169,18 @@ impl TransferService {
             })
             .await;
 
-        let _ = self.cache.delete(&format!("balance:{}", payload.from_account_id)).await;
-        let _ = self.cache.delete(&format!("balance:{}", to_account_id)).await;
-        let _ = self.cache.delete(&format!("transfers:{}", payload.customer_id)).await;
+        let _ = self
+            .cache
+            .delete(&format!("balance:{}", payload.from_account_id))
+            .await;
+        let _ = self
+            .cache
+            .delete(&format!("balance:{}", to_account_id))
+            .await;
+        let _ = self
+            .cache
+            .delete(&format!("transfers:{}", payload.customer_id))
+            .await;
 
         self.audit_repository
             .append(

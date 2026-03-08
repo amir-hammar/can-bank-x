@@ -19,8 +19,8 @@ impl CacheConfig {
             .parse::<u64>()
             .unwrap_or(300);
 
-        let redis_url = env::var("REDIS_URL")
-            .unwrap_or_else(|_| "redis://localhost:6379".to_string());
+        let redis_url =
+            env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379".to_string());
 
         Self {
             enabled,
