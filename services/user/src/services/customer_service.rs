@@ -243,6 +243,16 @@ pub async fn customer_me(
     })
 }
 
+pub async fn get_customer_by_username(
+    pool: &Pool<Postgres>,
+    username: &str,
+) -> Result<crate::models::domain::customer::Customer, ServiceError> {
+    customer_repository::get_customer_by_username(pool, username)
+        .await
+        .map_err(|_| ServiceError::internal("Could not fetch customer"))?
+        .ok_or_else(|| ServiceError::not_found("beneficiary username does not exist"))
+}
+
 fn map_sqlx_insert_error(error: sqlx::Error) -> ServiceError {
     if let sqlx::Error::Database(database_error) = &error {
         if let Some(code) = database_error.code() {

@@ -106,14 +106,15 @@ components:
   schemas:
     CreateTransferRequest:
       type: object
-      required: [customer_id, from_account_id, to_account_id, amount, idempotency_key]
+      required: [customer_id, from_account_id, beneficiary_username, amount, idempotency_key]
       properties:
         customer_id:
           type: string
         from_account_id:
           type: string
-        to_account_id:
+        beneficiary_username:
           type: string
+          description: Username of the beneficiary (destination customer). Will be resolved to their default account.
         amount:
           type: number
           format: double

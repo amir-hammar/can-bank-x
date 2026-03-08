@@ -20,6 +20,7 @@ use crate::{
 #[derive(Clone)]
 pub struct TransferService {
     account_service_base_url: String,
+    user_service_base_url: String,
     http_client: Client,
     transfer_repository: TransferRepository,
     audit_repository: AuditRepository,
@@ -37,6 +38,16 @@ struct AccountApplyTransferResponse {
     currency: String,
 }
 
+#[derive(Debug, Deserialize)]
+struct CustomerResponse {
+    id: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct DefaultAccountResponse {
+    account_id: String,
+}
+
 impl TransferService {
     const AML_BLOCK_THRESHOLD: f64 = 5000.0;
 
@@ -47,6 +58,7 @@ impl TransferService {
     ) -> Self {
         Self {
             account_service_base_url: config.account_service_base_url,
+            user_service_base_url: config.user_service_base_url,
             http_client: Client::new(),
             transfer_repository,
             audit_repository,
@@ -59,6 +71,10 @@ impl TransferService {
         trace_id: Option<String>,
     ) -> Result<CreateTransferResponse, AppError> {
         validators::validate_create_transfer(&payload)?;
+
+        let to_account_id = self
+            .resolve_beneficiary_account(&payload.beneficiary_username)
+            .await?;
 
         if payload.amount >= Self::AML_BLOCK_THRESHOLD {
             self.audit_repository
@@ -99,7 +115,7 @@ impl TransferService {
                 )
             })?;
 
-        self.fetch_account_balance(&payload.to_account_id)
+        self.fetch_account_balance(&to_account_id)
             .await
             .map_err(|_| {
                 AppError::failed_dependency(
@@ -111,7 +127,7 @@ impl TransferService {
         let apply_result = self
             .apply_account_transfer(
                 &payload.from_account_id,
-                &payload.to_account_id,
+                &to_account_id,
                 payload.amount,
             )
             .await
@@ -145,7 +161,7 @@ impl TransferService {
             .create_transfer(CreateTransferInput {
                 customer_id: payload.customer_id,
                 from_account_id: payload.from_account_id,
-                to_account_id: payload.to_account_id,
+                to_account_id: to_account_id.clone(),
                 amount: payload.amount,
                 currency: apply_result.currency,
                 idempotency_key: payload.idempotency_key,
@@ -249,6 +265,71 @@ impl TransferService {
                 created_at: transfer.created_at,
             })
             .collect())
+    }
+
+    async fn resolve_beneficiary_account(
+        &self,
+        beneficiary_username: &str,
+    ) -> Result<String, AppError> {
+        let customer = self
+            .fetch_customer_by_username(beneficiary_username)
+            .await
+            .map_err(|_| {
+                AppError::not_found(
+                    "BENEFICIARY_NOT_FOUND",
+                    "beneficiary username does not exist",
+                )
+            })?;
+
+        let default_account = self
+            .fetch_default_account(&customer.id)
+            .await
+            .map_err(|_| {
+                AppError::not_found(
+                    "BENEFICIARY_NO_ACCOUNT",
+                    "beneficiary has no default account",
+                )
+            })?;
+
+        Ok(default_account.account_id)
+    }
+
+    async fn fetch_customer_by_username(
+        &self,
+        username: &str,
+    ) -> Result<CustomerResponse, reqwest::Error> {
+        let url = format!(
+            "{}/api/v1/customers/by-username",
+            self.user_service_base_url.trim_end_matches('/')
+        );
+
+        self.http_client
+            .get(url)
+            .query(&[("username", username)])
+            .send()
+            .await?
+            .error_for_status()?
+            .json::<CustomerResponse>()
+            .await
+    }
+
+    async fn fetch_default_account(
+        &self,
+        customer_id: &str,
+    ) -> Result<DefaultAccountResponse, reqwest::Error> {
+        let url = format!(
+            "{}/api/v1/accounts/default",
+            self.account_service_base_url.trim_end_matches('/')
+        );
+
+        self.http_client
+            .get(url)
+            .query(&[("customer_id", customer_id)])
+            .send()
+            .await?
+            .error_for_status()?
+            .json::<DefaultAccountResponse>()
+            .await
     }
 
     async fn fetch_account_balance(

@@ -51,6 +51,17 @@ pub fn validate_balance_query(query: &AccountBalanceQuery) -> Result<(), AppErro
     Ok(())
 }
 
+pub fn validate_customer_id(customer_id: &str) -> Result<(), AppError> {
+    if customer_id.trim().is_empty() {
+        return Err(AppError::bad_request(
+            "INVALID_CUSTOMER_ID",
+            "customer_id query parameter is required",
+        ));
+    }
+
+    Ok(())
+}
+
 pub fn validate_apply_transfer_payload(payload: &ApplyTransferRequest) -> Result<(), AppError> {
     if payload.from_account_id.trim().is_empty() || payload.to_account_id.trim().is_empty() {
         return Err(AppError::bad_request(

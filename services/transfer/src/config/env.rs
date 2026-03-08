@@ -3,6 +3,7 @@ pub struct AppConfig {
     pub host: String,
     pub port: u16,
     pub account_service_base_url: String,
+    pub user_service_base_url: String,
 }
 
 impl AppConfig {
@@ -16,10 +17,14 @@ impl AppConfig {
         let account_service_base_url = std::env::var("ACCOUNT_SERVICE_BASE_URL")
             .unwrap_or_else(|_| "http://account-service:8080".to_string());
 
+        let user_service_base_url = std::env::var("USER_SERVICE_BASE_URL")
+            .unwrap_or_else(|_| "http://user-service:8080".to_string());
+
         Self {
             host,
             port,
             account_service_base_url,
+            user_service_base_url,
         }
     }
 

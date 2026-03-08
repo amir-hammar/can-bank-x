@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 pub struct CreateTransferRequest {
     pub customer_id: String,
     pub from_account_id: String,
-    pub to_account_id: String,
+    pub beneficiary_username: String,
     pub amount: f64,
     pub idempotency_key: String,
 }

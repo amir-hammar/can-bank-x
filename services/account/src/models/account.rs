@@ -9,4 +9,5 @@ pub struct Account {
     pub currency: String,
     pub available_balance: f64,
     pub ledger_balance: f64,
+    pub is_default: bool,
 }

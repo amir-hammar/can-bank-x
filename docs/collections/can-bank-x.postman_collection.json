@@ -697,7 +697,78 @@
           "response": []
         },
         {
-          "name": "05.02 Effectuer virement",
+          "name": "05.02 Effectuer virement par username",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('idempotency_key', 'idem-' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "let data = {};",
+                  "try { data = pm.response.json(); } catch (e) {}",
+                  "if (data.transfer_id) pm.collectionVariables.set('transfer_id', String(data.transfer_id));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Trace-Id",
+                "value": "{{trace_id}}"
+              },
+              {
+                "key": "X-Request-Id",
+                "value": "{{request_id}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer_id\": \"{{account_customer_id}}\",\n  \"from_account_id\": \"{{account_id}}\",\n  \"beneficiary_username\": \"recipient_username_here\",\n  \"amount\": 100,\n  \"idempotency_key\": \"{{idempotency_key}}\"\n}"
+            },
+            "url": {
+              "raw": "{{gateway_base_url}}/api/v1/transfers",
+              "host": [
+                "{{gateway_base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transfers"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "05.02.alt Effectuer virement par account ID (legacy)",
           "event": [
             {
               "listen": "prerequest",

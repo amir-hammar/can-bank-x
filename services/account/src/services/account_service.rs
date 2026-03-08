@@ -1,7 +1,8 @@
 use crate::{
     models::dto::{
         AccountBalanceQuery, AccountBalanceResponse, AccountSummaryResponse, ApplyTransferRequest,
-        ApplyTransferResponse, CreateAccountRequest, CreateAccountResponse, ListAccountsQuery,
+        ApplyTransferResponse, CreateAccountRequest, CreateAccountResponse, DefaultAccountQuery,
+        DefaultAccountResponse, ListAccountsQuery,
     },
     repositories::{
         account_repository::{AccountRepository, ApplyTransferRepoError},
@@ -50,6 +51,7 @@ impl AccountService {
             account_type: account.account_type,
             currency: account.currency,
             available_balance: account.available_balance,
+            is_default: account.is_default,
         })
     }
 
@@ -85,6 +87,7 @@ impl AccountService {
                 status: account.status,
                 currency: account.currency,
                 available_balance: account.available_balance,
+                is_default: account.is_default,
             })
             .collect())
     }
@@ -171,6 +174,37 @@ impl AccountService {
             currency: from_account.currency,
             from_available_balance: from_account.available_balance,
             to_available_balance: to_account.available_balance,
+        })
+    }
+
+    pub async fn get_default_account(
+        &self,
+        query: DefaultAccountQuery,
+        trace_id: Option<String>,
+    ) -> Result<DefaultAccountResponse, AppError> {
+        validators::validate_customer_id(&query.customer_id)?;
+
+        let account = self
+            .repository
+            .get_default_account_by_customer_id(&query.customer_id)
+            .await
+            .ok_or_else(|| {
+                AppError::not_found("ACCOUNT_NOT_FOUND", "customer has no default account")
+            })?;
+
+        self.audit_repository
+            .append(
+                "SYSTEM",
+                "account-service",
+                "DEFAULT_ACCOUNT_VIEWED",
+                "CUSTOMER",
+                &query.customer_id,
+                trace_id,
+            )
+            .await;
+
+        Ok(DefaultAccountResponse {
+            account_id: account.account_id,
         })
     }
 }

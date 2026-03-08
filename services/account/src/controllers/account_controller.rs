@@ -9,7 +9,8 @@ use crate::{
     app_state::AppState,
     models::dto::{
         AccountBalanceQuery, AccountBalanceResponse, AccountSummaryResponse, ApplyTransferRequest,
-        ApplyTransferResponse, CreateAccountRequest, CreateAccountResponse, ListAccountsQuery,
+        ApplyTransferResponse, CreateAccountRequest, CreateAccountResponse, DefaultAccountQuery,
+        DefaultAccountResponse, ListAccountsQuery,
     },
     utils::errors::AppError,
 };
@@ -56,6 +57,23 @@ pub async fn get_balance(
         .map(ToString::to_string);
 
     let response = state.account_service.get_balance(query, trace_id).await?;
+    Ok((StatusCode::OK, Json(response)))
+}
+
+pub async fn get_default_account(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(query): Query<DefaultAccountQuery>,
+) -> Result<(StatusCode, Json<DefaultAccountResponse>), AppError> {
+    let trace_id = headers
+        .get("X-Trace-Id")
+        .and_then(|value| value.to_str().ok())
+        .map(ToString::to_string);
+
+    let response = state
+        .account_service
+        .get_default_account(query, trace_id)
+        .await?;
     Ok((StatusCode::OK, Json(response)))
 }
 

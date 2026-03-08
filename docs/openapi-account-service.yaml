@@ -81,6 +81,31 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/accounts/default:
+    get:
+      summary: Get default account for a customer (used for beneficiary resolution)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: customer_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Default account details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DefaultAccountResponse'
+        '404':
+          description: Customer has no default account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 components:
   securitySchemes:
     bearerAuth:
@@ -114,6 +139,9 @@ components:
         available_balance:
           type: number
           format: double
+        is_default:
+          type: boolean
+          description: True if this is the first account created for the customer (default account for transfers)
     AccountSummaryResponse:
       type: object
       properties:
@@ -130,6 +158,15 @@ components:
         available_balance:
           type: number
           format: double
+        is_default:
+          type: boolean
+          description: True if this is the default account for the customer
+    DefaultAccountResponse:
+      type: object
+      properties:
+        account_id:
+          type: string
+          description: The default account ID for the customer
     AccountBalanceResponse:
       type: object
       properties:

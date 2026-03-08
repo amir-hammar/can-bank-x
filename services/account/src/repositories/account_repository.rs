@@ -30,6 +30,13 @@ impl AccountRepository {
         let id = self.sequence.fetch_add(1, Ordering::Relaxed);
         let initial_balance = payload.initial_balance.unwrap_or(0.0);
 
+        let mut guard = self
+            .accounts
+            .lock()
+            .expect("account repository mutex poisoned");
+
+        let is_default = !guard.iter().any(|a| a.customer_id == payload.customer_id);
+
         let account = Account {
             account_id: format!("acc_{}_{}", payload.customer_id, id),
             customer_id: payload.customer_id.clone(),
@@ -38,12 +45,9 @@ impl AccountRepository {
             currency: "CAD".to_string(),
             available_balance: initial_balance,
             ledger_balance: initial_balance,
+            is_default,
         };
 
-        let mut guard = self
-            .accounts
-            .lock()
-            .expect("account repository mutex poisoned");
         guard.push(account.clone());
 
         account
@@ -69,6 +73,17 @@ impl AccountRepository {
         guard
             .iter()
             .find(|account| account.account_id == account_id)
+            .cloned()
+    }
+
+    pub async fn get_default_account_by_customer_id(&self, customer_id: &str) -> Option<Account> {
+        let guard = self
+            .accounts
+            .lock()
+            .expect("account repository mutex poisoned");
+        guard
+            .iter()
+            .find(|account| account.customer_id == customer_id && account.is_default)
             .cloned()
     }
 

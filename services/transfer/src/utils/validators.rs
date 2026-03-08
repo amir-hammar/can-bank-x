@@ -15,16 +15,10 @@ pub fn validate_create_transfer(payload: &CreateTransferRequest) -> Result<(), A
             "from_account_id is required",
         ));
     }
-    if payload.to_account_id.trim().is_empty() {
+    if payload.beneficiary_username.trim().is_empty() {
         return Err(AppError::bad_request(
             "INVALID_TRANSFER",
-            "to_account_id is required",
-        ));
-    }
-    if payload.from_account_id == payload.to_account_id {
-        return Err(AppError::bad_request(
-            "INVALID_TRANSFER",
-            "from_account_id and to_account_id must be different",
+            "beneficiary_username is required",
         ));
     }
     if payload.amount <= 0.0 {

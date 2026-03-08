@@ -17,6 +17,10 @@ pub fn routes() -> Router<crate::app_state::AppState> {
             get(account_controller::get_balance),
         )
         .route(
+            "/api/v1/accounts/default",
+            get(account_controller::get_default_account),
+        )
+        .route(
             "/api/v1/accounts/apply-transfer",
             post(account_controller::apply_transfer),
         )
