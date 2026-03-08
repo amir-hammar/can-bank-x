@@ -7,6 +7,8 @@ pub struct AppError {
     pub status_code: StatusCode,
     pub code: &'static str,
     pub message: &'static str,
+    pub details: Vec<String>,
+    pub trace_id: String,
 }
 
 impl AppError {
@@ -15,6 +17,8 @@ impl AppError {
             status_code: StatusCode::BAD_REQUEST,
             code,
             message,
+            details: vec![],
+            trace_id: "unknown".to_string(),
         }
     }
 
@@ -23,7 +27,14 @@ impl AppError {
             status_code: StatusCode::NOT_FOUND,
             code,
             message,
+            details: vec![],
+            trace_id: "unknown".to_string(),
         }
+    }
+
+    pub fn with_trace_id(mut self, trace_id: String) -> Self {
+        self.trace_id = trace_id;
+        self
     }
 }
 
@@ -32,8 +43,10 @@ impl IntoResponse for AppError {
         (
             self.status_code,
             Json(ErrorResponse {
-                code: self.code,
-                message: self.message,
+                code: self.code.to_string(),
+                message: self.message.to_string(),
+                details: self.details,
+                trace_id: self.trace_id,
             }),
         )
             .into_response()

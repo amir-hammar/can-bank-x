@@ -11,6 +11,8 @@ pub struct AppError {
     status: StatusCode,
     code: &'static str,
     message: String,
+    details: Vec<String>,
+    trace_id: String,
 }
 
 impl AppError {
@@ -19,6 +21,8 @@ impl AppError {
             status: StatusCode::BAD_REQUEST,
             code,
             message: message.into(),
+            details: vec![],
+            trace_id: "unknown".to_string(),
         }
     }
 
@@ -27,6 +31,8 @@ impl AppError {
             status: StatusCode::NOT_FOUND,
             code,
             message: message.into(),
+            details: vec![],
+            trace_id: "unknown".to_string(),
         }
     }
 
@@ -35,7 +41,14 @@ impl AppError {
             status: StatusCode::FAILED_DEPENDENCY,
             code,
             message: message.into(),
+            details: vec![],
+            trace_id: "unknown".to_string(),
         }
+    }
+
+    pub fn with_trace_id(mut self, trace_id: String) -> Self {
+        self.trace_id = trace_id;
+        self
     }
 }
 
@@ -44,8 +57,10 @@ impl IntoResponse for AppError {
         (
             self.status,
             Json(ErrorResponse {
-                code: self.code,
+                code: self.code.to_string(),
                 message: self.message,
+                details: self.details,
+                trace_id: self.trace_id,
             }),
         )
             .into_response()

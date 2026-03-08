@@ -40,12 +40,42 @@ jobs:
 
   build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30
     needs: [lint]
     steps:
       - uses: actions/checkout@v4
 
       - name: Install Rust (pinned)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.89.0
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            services/user
+            services/account
+            services/transfer
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker images
+        run: |
+          cp .env.example .env
+          docker network create can-bank-x-network || true
+          docker compose build \
+            user-service account-service transfer-service api-gateway
+
+  tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: 1.89.0
@@ -64,13 +94,21 @@ jobs:
           cargo test --manifest-path services/account/Cargo.toml --lib --bins
           cargo test --manifest-path services/transfer/Cargo.toml --lib --bins
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build Docker images
+      - name: Prepare environment
         run: |
           cp .env.example .env
           docker network create can-bank-x-network || true
-          docker compose build \
-            user-service account-service transfer-service api-gateway
+
+      - name: Run integration tests
+        run: sh infra/tests/integration-tests.sh
+
+      - name: Run E2E tests
+        run: sh infra/tests/e2e-tests.sh
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-test-artifacts
+          path: artifacts/
 

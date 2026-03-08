@@ -30,6 +30,37 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /api/v1/accounts/apply-transfer:
+    post:
+      summary: Apply transfer balance update between two accounts (internal transfer-service call)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplyTransferRequest'
+      responses:
+        '200':
+          description: Transfer balance update applied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplyTransferResponse'
+        '400':
+          description: Invalid transfer payload or business rule violation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Source or destination account not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /api/v1/accounts:
     get:
       summary: List customer accounts
@@ -167,6 +198,35 @@ components:
         account_id:
           type: string
           description: The default account ID for the customer
+    ApplyTransferRequest:
+      type: object
+      required: [from_account_id, to_account_id, amount]
+      properties:
+        from_account_id:
+          type: string
+        to_account_id:
+          type: string
+        amount:
+          type: number
+          format: double
+    ApplyTransferResponse:
+      type: object
+      properties:
+        from_account_id:
+          type: string
+        to_account_id:
+          type: string
+        amount:
+          type: number
+          format: double
+        currency:
+          type: string
+        from_available_balance:
+          type: number
+          format: double
+        to_available_balance:
+          type: number
+          format: double
     AccountBalanceResponse:
       type: object
       properties:
@@ -182,8 +242,15 @@ components:
           type: string
     ErrorResponse:
       type: object
+      required: [code, message, details, traceId]
       properties:
         code:
           type: string
         message:
+          type: string
+        details:
+          type: array
+          items:
+            type: string
+        traceId:
           type: string

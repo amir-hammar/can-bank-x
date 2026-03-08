@@ -61,8 +61,11 @@ pub async fn me(State(state): State<AppState>, headers: HeaderMap) -> impl IntoR
 
 pub async fn get_by_username(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Query(query): Query<GetByUsernameQuery>,
 ) -> impl IntoResponse {
+    let trace_id = get_trace_id(&headers);
+
     match customer_service::get_customer_by_username(&state.pool, &query.username).await {
         Ok(customer) => {
             let response = serde_json::json!({
@@ -70,20 +73,7 @@ pub async fn get_by_username(
             });
             (StatusCode::OK, Json(response)).into_response()
         }
-        Err(error) => {
-            let status = StatusCode::from_u16(error.status_code)
-                .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
-            (
-                status,
-                Json(ErrorResponse::new(
-                    &error.code,
-                    &error.message,
-                    error.details,
-                    "",
-                )),
-            )
-                .into_response()
-        }
+        Err(error) => map_error(error, &trace_id),
     }
 }
 

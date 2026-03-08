@@ -75,6 +75,9 @@ pub struct ApplyTransferResponse {
 
 #[derive(Debug, Serialize)]
 pub struct ErrorResponse {
-    pub code: &'static str,
-    pub message: &'static str,
+    pub code: String,
+    pub message: String,
+    pub details: Vec<String>,
+    #[serde(rename = "traceId")]
+    pub trace_id: String,
 }
