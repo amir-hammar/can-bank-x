@@ -1,6 +1,6 @@
+use crate::models::transfer::Transfer;
 use sqlx::{PgPool, Row};
 use uuid::Uuid;
-use crate::models::transfer::Transfer;
 
 #[derive(Clone)]
 pub struct CreateTransferInput {
@@ -45,12 +45,21 @@ impl TransferRepository {
     }
 
     pub async fn create_transfer(&self, input: CreateTransferInput) -> Transfer {
-        let customer_uuid = Uuid::parse_str(&input.customer_id)
-            .unwrap_or_else(|_| Uuid::new_v4());
-        let from_uuid = Uuid::parse_str(input.from_account_id.strip_prefix("acc_").unwrap_or(&input.from_account_id))
-            .unwrap_or_else(|_| Uuid::new_v4());
-        let to_uuid = Uuid::parse_str(input.to_account_id.strip_prefix("acc_").unwrap_or(&input.to_account_id))
-            .unwrap_or_else(|_| Uuid::new_v4());
+        let customer_uuid = Uuid::parse_str(&input.customer_id).unwrap_or_else(|_| Uuid::new_v4());
+        let from_uuid = Uuid::parse_str(
+            input
+                .from_account_id
+                .strip_prefix("acc_")
+                .unwrap_or(&input.from_account_id),
+        )
+        .unwrap_or_else(|_| Uuid::new_v4());
+        let to_uuid = Uuid::parse_str(
+            input
+                .to_account_id
+                .strip_prefix("acc_")
+                .unwrap_or(&input.to_account_id),
+        )
+        .unwrap_or_else(|_| Uuid::new_v4());
 
         let row = sqlx::query(
             "INSERT INTO transfers (customer_id, from_account_id, to_account_id, amount, status, idempotency_key)
@@ -73,7 +82,8 @@ impl TransferRepository {
     }
 
     pub async fn find_by_id(&self, transfer_id: &str) -> Option<Transfer> {
-        let transfer_uuid = Uuid::parse_str(transfer_id.strip_prefix("tr_").unwrap_or(transfer_id)).ok()?;
+        let transfer_uuid =
+            Uuid::parse_str(transfer_id.strip_prefix("tr_").unwrap_or(transfer_id)).ok()?;
 
         let row = sqlx::query(
             "SELECT id, customer_id, from_account_id, to_account_id, amount::double precision, status, idempotency_key, created_at::text
@@ -95,7 +105,8 @@ impl TransferRepository {
         limit: usize,
     ) -> Vec<Transfer> {
         let customer_uuid = customer_id.and_then(|id| Uuid::parse_str(id).ok());
-        let account_uuid = account_id.and_then(|id| Uuid::parse_str(id.strip_prefix("acc_").unwrap_or(id)).ok());
+        let account_uuid =
+            account_id.and_then(|id| Uuid::parse_str(id.strip_prefix("acc_").unwrap_or(id)).ok());
 
         let rows = sqlx::query(
                         "SELECT id, customer_id, from_account_id, to_account_id, amount::double precision, status, idempotency_key, created_at::text

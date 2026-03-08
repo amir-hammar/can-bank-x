@@ -409,7 +409,8 @@ mod tests {
             AppConfig {
                 host: "127.0.0.1".to_string(),
                 port: 8080,
-                database_url: "postgres://postgres:postgres@localhost:5432/canbankx_transfer".to_string(),
+                database_url: "postgres://postgres:postgres@localhost:5432/canbankx_transfer"
+                    .to_string(),
                 account_service_base_url: "http://127.0.0.1:65535".to_string(),
                 user_service_base_url: "http://127.0.0.1:65536".to_string(),
             },

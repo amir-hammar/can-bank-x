@@ -1,10 +1,10 @@
-use sqlx::postgres::PgPoolOptions;
 use account_service::{app_state::AppState, config::env::AppConfig, create_app};
+use sqlx::postgres::PgPoolOptions;
 
 #[tokio::main]
 async fn main() {
     let config = AppConfig::from_env();
-    
+
     // Create database pool
     let pool = PgPoolOptions::new()
         .max_connections(5)

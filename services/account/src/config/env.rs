@@ -16,7 +16,11 @@ impl AppConfig {
         let database_url = env::var("ACCOUNT_SERVICE_DATABASE_URL")
             .expect("ACCOUNT_SERVICE_DATABASE_URL must be set");
 
-        Self { host, port, database_url }
+        Self {
+            host,
+            port,
+            database_url,
+        }
     }
 
     pub fn address(&self) -> String {

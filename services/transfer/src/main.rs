@@ -1,5 +1,5 @@
-use transfer_service::{app_state::AppState, config::env::AppConfig, create_app};
 use sqlx::postgres::PgPoolOptions;
+use transfer_service::{app_state::AppState, config::env::AppConfig, create_app};
 
 #[tokio::main]
 async fn main() {

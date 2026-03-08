@@ -26,13 +26,12 @@ impl AccountRepository {
         let initial_balance = payload.initial_balance.unwrap_or(0.0);
 
         // Check if this is the first account for the customer
-        let existing_count: (i64,) = sqlx::query_as(
-            "SELECT COUNT(*) FROM accounts WHERE customer_id = $1"
-        )
-        .bind(customer_id)
-        .fetch_one(&self.pool)
-        .await
-        .unwrap_or((0,));
+        let existing_count: (i64,) =
+            sqlx::query_as("SELECT COUNT(*) FROM accounts WHERE customer_id = $1")
+                .bind(customer_id)
+                .fetch_one(&self.pool)
+                .await
+                .unwrap_or((0,));
 
         let is_default = existing_count.0 == 0;
 
@@ -41,7 +40,7 @@ impl AccountRepository {
 
         let _ = sqlx::query(
             "INSERT INTO accounts (id, customer_id, type, status, is_default)
-             VALUES ($1, $2, $3, 'OPEN', $4)"
+             VALUES ($1, $2, $3, 'OPEN', $4)",
         )
         .bind(account_id)
         .bind(customer_id)
@@ -52,7 +51,7 @@ impl AccountRepository {
 
         let _ = sqlx::query(
             "INSERT INTO account_balances (account_id, available, ledger)
-             VALUES ($1, $2, $3)"
+             VALUES ($1, $2, $3)",
         )
         .bind(account_id)
         .bind(initial_balance)
@@ -97,7 +96,9 @@ impl AccountRepository {
                 customer_id: customer_id.to_string(),
                 account_type: row.get(2),
                 status: row.get(3),
-                currency: row.get::<Option<String>, _>(4).unwrap_or_else(|| "CAD".to_string()),
+                currency: row
+                    .get::<Option<String>, _>(4)
+                    .unwrap_or_else(|| "CAD".to_string()),
                 available_balance: row.get(6),
                 ledger_balance: row.get(7),
                 is_default: row.get(5),
@@ -127,7 +128,9 @@ impl AccountRepository {
             customer_id: r.get::<Uuid, _>(1).to_string(),
             account_type: r.get(2),
             status: r.get(3),
-            currency: r.get::<Option<String>, _>(4).unwrap_or_else(|| "CAD".to_string()),
+            currency: r
+                .get::<Option<String>, _>(4)
+                .unwrap_or_else(|| "CAD".to_string()),
             available_balance: r.get(6),
             ledger_balance: r.get(7),
             is_default: r.get(5),
@@ -155,7 +158,9 @@ impl AccountRepository {
             customer_id: customer_id.to_string(),
             account_type: r.get(2),
             status: r.get(3),
-            currency: r.get::<Option<String>, _>(4).unwrap_or_else(|| "CAD".to_string()),
+            currency: r
+                .get::<Option<String>, _>(4)
+                .unwrap_or_else(|| "CAD".to_string()),
             available_balance: r.get(6),
             ledger_balance: r.get(7),
             is_default: true,
@@ -168,7 +173,9 @@ impl AccountRepository {
         to_account_id: &str,
         amount: f64,
     ) -> Result<(Account, Account), ApplyTransferRepoError> {
-        let from_uuid_str = from_account_id.strip_prefix("acc_").unwrap_or(from_account_id);
+        let from_uuid_str = from_account_id
+            .strip_prefix("acc_")
+            .unwrap_or(from_account_id);
         let to_uuid_str = to_account_id.strip_prefix("acc_").unwrap_or(to_account_id);
 
         let from_uuid = Uuid::parse_str(from_uuid_str)
@@ -222,7 +229,7 @@ impl AccountRepository {
         let _ = sqlx::query(
             "UPDATE account_balances 
              SET available = available - $2, ledger = ledger - $2
-             WHERE account_id = $1"
+             WHERE account_id = $1",
         )
         .bind(from_uuid)
         .bind(amount)
@@ -232,7 +239,7 @@ impl AccountRepository {
         let _ = sqlx::query(
             "UPDATE account_balances 
              SET available = available + $2, ledger = ledger + $2
-             WHERE account_id = $1"
+             WHERE account_id = $1",
         )
         .bind(to_uuid)
         .bind(amount)
@@ -240,15 +247,16 @@ impl AccountRepository {
         .await;
 
         // Fetch updated accounts
-        let updated_from = self.get_account_by_id(&format!("acc_{}", from_uuid))
+        let updated_from = self
+            .get_account_by_id(&format!("acc_{}", from_uuid))
             .await
             .ok_or(ApplyTransferRepoError::SourceAccountNotFound)?;
 
-        let updated_to = self.get_account_by_id(&format!("acc_{}", to_uuid))
+        let updated_to = self
+            .get_account_by_id(&format!("acc_{}", to_uuid))
             .await
             .ok_or(ApplyTransferRepoError::DestinationAccountNotFound)?;
 
         Ok((updated_from, updated_to))
     }
 }
-
