@@ -25,8 +25,7 @@ pub async fn register(State(state): State<AppState>, headers: HeaderMap) -> impl
         Err(error) => return map_error(error, &trace_id),
     };
 
-    match customer_service::register_customer_from_identity(&state.pool, &identity, &trace_id)
-        .await
+    match customer_service::register_customer_from_identity(&state.pool, &identity, &trace_id).await
     {
         Ok(_) => {
             let response = serde_json::json!({
