@@ -125,11 +125,7 @@ impl TransferService {
             })?;
 
         let apply_result = self
-            .apply_account_transfer(
-                &payload.from_account_id,
-                &to_account_id,
-                payload.amount,
-            )
+            .apply_account_transfer(&payload.from_account_id, &to_account_id, payload.amount)
             .await
             .map_err(|_| {
                 AppError::failed_dependency(
