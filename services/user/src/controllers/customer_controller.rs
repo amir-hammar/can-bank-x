@@ -11,6 +11,28 @@ use crate::{
     services::{customer_service, ServiceError},
 };
 
+pub async fn register(State(state): State<AppState>, headers: HeaderMap) -> impl IntoResponse {
+    let trace_id = get_trace_id(&headers);
+
+    let identity = match get_auth_identity(&headers) {
+        Ok(identity) => identity,
+        Err(error) => return map_error(error, &trace_id),
+    };
+
+    match customer_service::register_customer_from_identity(&state.pool, &identity, &trace_id)
+        .await
+    {
+        Ok(_) => {
+            let response = serde_json::json!({
+                "status": "registered",
+                "message": "Customer registered and KYC countdown started"
+            });
+            (StatusCode::OK, Json(response)).into_response()
+        }
+        Err(error) => map_error(error, &trace_id),
+    }
+}
+
 pub async fn me(State(state): State<AppState>, headers: HeaderMap) -> impl IntoResponse {
     let trace_id = get_trace_id(&headers);
 
