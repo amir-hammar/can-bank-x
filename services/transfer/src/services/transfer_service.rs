@@ -404,6 +404,7 @@ mod tests {
                 host: "127.0.0.1".to_string(),
                 port: 8080,
                 account_service_base_url: "http://127.0.0.1:65535".to_string(),
+                user_service_base_url: "http://127.0.0.1:65536".to_string(),
             },
             TransferRepository::new(),
             AuditRepository::new(),
@@ -428,7 +429,7 @@ mod tests {
         let payload = CreateTransferRequest {
             customer_id: "".to_string(),
             from_account_id: "a1".to_string(),
-            to_account_id: "a1".to_string(),
+            beneficiary_username: "testuser".to_string(),
             amount: 0.0,
             idempotency_key: "".to_string(),
         };
