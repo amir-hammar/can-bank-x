@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 #[async_trait]
 pub trait Cache: Clone + Send + Sync {
     async fn get<T: for<'de> Deserialize<'de>>(&self, key: &str) -> Option<T>;
-    async fn set<T: Serialize>(&self, key: &str, value: &T, ttl: u64) -> bool;
+    async fn set<T: Serialize + Sync>(&self, key: &str, value: &T, ttl: u64) -> bool;
     async fn delete(&self, key: &str) -> bool;
     async fn is_enabled(&self) -> bool;
 }
@@ -24,7 +24,7 @@ impl Cache for CacheClient {
         }
     }
 
-    async fn set<T: Serialize>(&self, key: &str, value: &T, ttl: u64) -> bool {
+    async fn set<T: Serialize + Sync>(&self, key: &str, value: &T, ttl: u64) -> bool {
         match self {
             CacheClient::Redis(cache) => cache.set(key, value, ttl).await,
             CacheClient::NoOp(cache) => cache.set(key, value, ttl).await,
@@ -112,9 +112,10 @@ impl Cache for RedisCache {
                 None
             }
             Some(client) => {
+                let mut connection = client.clone();
                 match redis::cmd("GET")
                     .arg(key)
-                    .query_async::<_, Option<String>>(client)
+                    .query_async::<_, Option<String>>(&mut connection)
                     .await
                 {
                     Ok(Some(data)) => match serde_json::from_str::<T>(&data) {
@@ -140,7 +141,7 @@ impl Cache for RedisCache {
         }
     }
 
-    async fn set<T: Serialize>(&self, key: &str, value: &T, ttl: u64) -> bool {
+    async fn set<T: Serialize + Sync>(&self, key: &str, value: &T, ttl: u64) -> bool {
         match &self.client {
             None => {
                 log::debug!("Cache set skipped (Redis unavailable): {}", key);
@@ -148,12 +149,13 @@ impl Cache for RedisCache {
             }
             Some(client) => match serde_json::to_string(value) {
                 Ok(serialized) => {
+                    let mut connection = client.clone();
                     match redis::cmd("SET")
                         .arg(key)
                         .arg(&serialized)
                         .arg("EX")
                         .arg(ttl)
-                        .query_async::<_, ()>(client)
+                        .query_async::<_, ()>(&mut connection)
                         .await
                     {
                         Ok(_) => {
@@ -181,9 +183,10 @@ impl Cache for RedisCache {
                 false
             }
             Some(client) => {
+                let mut connection = client.clone();
                 match redis::cmd("DEL")
                     .arg(key)
-                    .query_async::<_, u32>(client)
+                    .query_async::<_, u32>(&mut connection)
                     .await
                 {
                     Ok(deleted) => {
@@ -215,7 +218,7 @@ impl Cache for NoOpCache {
         None
     }
 
-    async fn set<T: Serialize>(&self, _key: &str, _value: &T, _ttl: u64) -> bool {
+    async fn set<T: Serialize + Sync>(&self, _key: &str, _value: &T, _ttl: u64) -> bool {
         false
     }
 

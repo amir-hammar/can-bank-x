@@ -1,5 +1,5 @@
 use crate::{
-    cache::CacheClient,
+    cache::{Cache, CacheClient},
     models::dto::{
         AccountBalanceQuery, AccountBalanceResponse, AccountSummaryResponse, ApplyTransferRequest,
         ApplyTransferResponse, CreateAccountRequest, CreateAccountResponse, DefaultAccountQuery,

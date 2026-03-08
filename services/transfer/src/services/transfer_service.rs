@@ -2,7 +2,7 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    cache::CacheClient,
+    cache::{Cache, CacheClient},
     config::env::AppConfig,
     models::{
         dto::{
