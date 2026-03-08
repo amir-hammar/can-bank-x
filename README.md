@@ -112,6 +112,29 @@ Manual migration execution (via Postgres container):
 - `docker exec -i postgres psql -U $POSTGRES_USER -d canbankx_account < services/account/migrations/2026030201_init.sql`
 - `docker exec -i postgres psql -U $POSTGRES_USER -d canbankx_transfer < services/transfer/migrations/2026030201_init.sql`
 
+## Caching (Redis)
+
+Optional Redis caching layer for account and transfer services improves read performance on frequently accessed data.
+
+**Configuration via environment variables:**
+- `CACHE_ENABLED`: Enable/disable caching (`true`/`false`, default: `false`)
+- `CACHE_TTL_SECONDS`: Cache entry time-to-live in seconds (default: `300`)
+- `REDIS_URL`: Redis server URL (default: `redis://localhost:6379`)
+
+**What gets cached:**
+- Account lists by customer (`accounts:{customer_id}`)
+- Account balances (`balance:{account_id}`)
+- Cache is invalidated automatically on transfers and balance mutations
+
+**Enable caching:**
+Set `CACHE_ENABLED=true` in `.env` before running `docker compose up -d --build`.
+
+**Benchmark without cache:**
+Set `CACHE_ENABLED=false` to compare performance baseline. No code changes needed.
+
+**Graceful fallback:**
+If Redis is unavailable, services fall back to direct database access with warning logs. Caching is transparent to application logic.
+
 ## CI Pipeline
 
 Workflow file:

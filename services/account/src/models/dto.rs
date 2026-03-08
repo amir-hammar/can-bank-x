@@ -32,7 +32,7 @@ pub struct DefaultAccountQuery {
     pub customer_id: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AccountSummaryResponse {
     pub account_id: String,
     pub customer_id: String,
@@ -43,7 +43,7 @@ pub struct AccountSummaryResponse {
     pub is_default: bool,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AccountBalanceResponse {
     pub account_id: String,
     pub available_balance: f64,

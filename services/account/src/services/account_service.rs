@@ -1,4 +1,5 @@
 use crate::{
+    cache::{Cache, CacheClient},
     models::dto::{
         AccountBalanceQuery, AccountBalanceResponse, AccountSummaryResponse, ApplyTransferRequest,
         ApplyTransferResponse, CreateAccountRequest, CreateAccountResponse, DefaultAccountQuery,
@@ -15,13 +16,19 @@ use crate::{
 pub struct AccountService {
     repository: AccountRepository,
     audit_repository: AuditRepository,
+    cache: CacheClient,
 }
 
 impl AccountService {
-    pub fn new(repository: AccountRepository, audit_repository: AuditRepository) -> Self {
+    pub fn new(
+        repository: AccountRepository,
+        audit_repository: AuditRepository,
+        cache: CacheClient,
+    ) -> Self {
         Self {
             repository,
             audit_repository,
+            cache,
         }
     }
 
@@ -33,6 +40,40 @@ impl AccountService {
         validators::validate_create_account_payload(&payload)?;
 
         let account = self.repository.create_account(&payload).await;
+
+        let balance_cache_key = format!("balance:{}", account.account_id);
+        let balance_response = AccountBalanceResponse {
+            account_id: account.account_id.clone(),
+            available_balance: account.available_balance,
+            ledger_balance: account.ledger_balance,
+            currency: account.currency.clone(),
+        };
+        let _ = self
+            .cache
+            .set(&balance_cache_key, &balance_response, 300)
+            .await;
+
+        let accounts_cache_key = format!("accounts:{}", payload.customer_id);
+        let accounts = self
+            .repository
+            .list_accounts_by_customer(&payload.customer_id)
+            .await;
+        let accounts_response: Vec<AccountSummaryResponse> = accounts
+            .into_iter()
+            .map(|current| AccountSummaryResponse {
+                account_id: current.account_id,
+                customer_id: current.customer_id,
+                account_type: current.account_type,
+                status: current.status,
+                currency: current.currency,
+                available_balance: current.available_balance,
+                is_default: current.is_default,
+            })
+            .collect();
+        let _ = self
+            .cache
+            .set(&accounts_cache_key, &accounts_response, 300)
+            .await;
 
         self.audit_repository
             .append(
@@ -62,10 +103,45 @@ impl AccountService {
     ) -> Result<Vec<AccountSummaryResponse>, AppError> {
         validators::validate_list_accounts_query(&query)?;
 
+        let cache_key = format!("accounts:{}", &query.customer_id);
+
+        if let Some(cached) = self
+            .cache
+            .get::<Vec<AccountSummaryResponse>>(&cache_key)
+            .await
+        {
+            self.audit_repository
+                .append(
+                    "CUSTOMER",
+                    &query.customer_id,
+                    "ACCOUNTS_LIST_VIEWED",
+                    "CUSTOMER",
+                    &query.customer_id,
+                    trace_id,
+                )
+                .await;
+            return Ok(cached);
+        }
+
         let accounts = self
             .repository
             .list_accounts_by_customer(&query.customer_id)
             .await;
+
+        let response: Vec<AccountSummaryResponse> = accounts
+            .into_iter()
+            .map(|account| AccountSummaryResponse {
+                account_id: account.account_id,
+                customer_id: account.customer_id,
+                account_type: account.account_type,
+                status: account.status,
+                currency: account.currency,
+                available_balance: account.available_balance,
+                is_default: account.is_default,
+            })
+            .collect();
+
+        let _ = self.cache.set(&cache_key, &response, 300).await;
 
         self.audit_repository
             .append(
@@ -78,18 +154,7 @@ impl AccountService {
             )
             .await;
 
-        Ok(accounts
-            .into_iter()
-            .map(|account| AccountSummaryResponse {
-                account_id: account.account_id,
-                customer_id: account.customer_id,
-                account_type: account.account_type,
-                status: account.status,
-                currency: account.currency,
-                available_balance: account.available_balance,
-                is_default: account.is_default,
-            })
-            .collect())
+        Ok(response)
     }
 
     pub async fn get_balance(
@@ -99,11 +164,36 @@ impl AccountService {
     ) -> Result<AccountBalanceResponse, AppError> {
         validators::validate_balance_query(&query)?;
 
+        let cache_key = format!("balance:{}", &query.account_id);
+
+        if let Some(cached) = self.cache.get::<AccountBalanceResponse>(&cache_key).await {
+            self.audit_repository
+                .append(
+                    "SYSTEM",
+                    "account-service",
+                    "ACCOUNT_BALANCE_VIEWED",
+                    "ACCOUNT",
+                    &query.account_id,
+                    trace_id,
+                )
+                .await;
+            return Ok(cached);
+        }
+
         let account = self
             .repository
             .get_account_by_id(&query.account_id)
             .await
             .ok_or_else(|| AppError::not_found("ACCOUNT_NOT_FOUND", "account_id was not found"))?;
+
+        let response = AccountBalanceResponse {
+            account_id: account.account_id.clone(),
+            available_balance: account.available_balance,
+            ledger_balance: account.ledger_balance,
+            currency: account.currency,
+        };
+
+        let _ = self.cache.set(&cache_key, &response, 300).await;
 
         self.audit_repository
             .append(
@@ -116,12 +206,7 @@ impl AccountService {
             )
             .await;
 
-        Ok(AccountBalanceResponse {
-            account_id: account.account_id,
-            available_balance: account.available_balance,
-            ledger_balance: account.ledger_balance,
-            currency: account.currency,
-        })
+        Ok(response)
     }
 
     pub async fn apply_transfer(
@@ -155,6 +240,23 @@ impl AccountService {
                     "source account has insufficient available balance",
                 ),
             })?;
+
+        let _ = self
+            .cache
+            .delete(&format!("balance:{}", payload.from_account_id))
+            .await;
+        let _ = self
+            .cache
+            .delete(&format!("balance:{}", payload.to_account_id))
+            .await;
+        let _ = self
+            .cache
+            .delete(&format!("accounts:{}", from_account.customer_id))
+            .await;
+        let _ = self
+            .cache
+            .delete(&format!("accounts:{}", to_account.customer_id))
+            .await;
 
         self.audit_repository
             .append(

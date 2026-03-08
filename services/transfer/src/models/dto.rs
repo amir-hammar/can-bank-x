@@ -28,7 +28,7 @@ pub struct ListTransfersQuery {
     pub limit: Option<usize>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct TransferSummaryResponse {
     pub transfer_id: String,
     pub customer_id: String,
@@ -40,7 +40,7 @@ pub struct TransferSummaryResponse {
     pub created_at: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct TransferDetailResponse {
     pub transfer_id: String,
     pub customer_id: String,
