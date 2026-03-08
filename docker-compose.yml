@@ -21,6 +21,20 @@ services:
     networks:
       - can-bank-x-network
 
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "PING"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    networks:
+      - can-bank-x-network
+
   seed:
     image: postgres:16.2-alpine
     container_name: seed
@@ -97,11 +111,16 @@ services:
       - .env
     environment:
       DATABASE_URL: ${ACCOUNT_SERVICE_DATABASE_URL}
+      CACHE_ENABLED: "true"
+      CACHE_TTL_SECONDS: "300"
+      REDIS_URL: redis://redis:6379
     depends_on:
       postgres:
         condition: service_healthy
       seed:
         condition: service_completed_successfully
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
       interval: 10s
@@ -121,12 +140,17 @@ services:
     environment:
       DATABASE_URL: ${TRANSFER_SERVICE_DATABASE_URL}
       ACCOUNT_SERVICE_BASE_URL: http://account-service:8080
+      CACHE_ENABLED: "true"
+      CACHE_TTL_SECONDS: "300"
+      REDIS_URL: redis://redis:6379
     depends_on:
       postgres:
         condition: service_healthy
       seed:
         condition: service_completed_successfully
       account-service:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]

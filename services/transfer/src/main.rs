@@ -16,7 +16,7 @@ async fn main() {
         .await
         .expect("failed to run transfer-service migrations");
 
-    let state = AppState::new(config.clone(), pool);
+    let state = AppState::new(config.clone(), pool).await;
     let app = create_app(state);
 
     let listener = tokio::net::TcpListener::bind(config.address())

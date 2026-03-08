@@ -2,6 +2,7 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    cache::CacheClient,
     config::env::AppConfig,
     models::{
         dto::{
@@ -24,6 +25,7 @@ pub struct TransferService {
     http_client: Client,
     transfer_repository: TransferRepository,
     audit_repository: AuditRepository,
+    cache: CacheClient,
 }
 
 #[derive(Debug, Serialize)]
@@ -55,6 +57,7 @@ impl TransferService {
         config: AppConfig,
         transfer_repository: TransferRepository,
         audit_repository: AuditRepository,
+        cache: CacheClient,
     ) -> Self {
         Self {
             account_service_base_url: config.account_service_base_url,
@@ -62,6 +65,7 @@ impl TransferService {
             http_client: Client::new(),
             transfer_repository,
             audit_repository,
+            cache,
         }
     }
 
@@ -155,8 +159,8 @@ impl TransferService {
         let transfer = self
             .transfer_repository
             .create_transfer(CreateTransferInput {
-                customer_id: payload.customer_id,
-                from_account_id: payload.from_account_id,
+                customer_id: payload.customer_id.clone(),
+                from_account_id: payload.from_account_id.clone(),
                 to_account_id: to_account_id.clone(),
                 amount: payload.amount,
                 currency: apply_result.currency,
@@ -164,6 +168,10 @@ impl TransferService {
                 status: "COMPLETED".to_string(),
             })
             .await;
+
+        let _ = self.cache.delete(&format!("balance:{}", payload.from_account_id)).await;
+        let _ = self.cache.delete(&format!("balance:{}", to_account_id)).await;
+        let _ = self.cache.delete(&format!("transfers:{}", payload.customer_id)).await;
 
         self.audit_repository
             .append(
