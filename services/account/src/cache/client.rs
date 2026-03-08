@@ -142,6 +142,8 @@ impl Cache for RedisCache {
     }
 
     async fn set<T: Serialize + Sync>(&self, key: &str, value: &T, ttl: u64) -> bool {
+        let effective_ttl = if ttl == 0 { self.ttl } else { ttl };
+
         match &self.client {
             None => {
                 log::debug!("Cache set skipped (Redis unavailable): {}", key);
@@ -154,12 +156,12 @@ impl Cache for RedisCache {
                         .arg(key)
                         .arg(&serialized)
                         .arg("EX")
-                        .arg(ttl)
+                        .arg(effective_ttl)
                         .query_async::<_, ()>(&mut connection)
                         .await
                     {
                         Ok(_) => {
-                            log::debug!("Cache set with TTL {} seconds: {}", ttl, key);
+                            log::debug!("Cache set with TTL {} seconds: {}", effective_ttl, key);
                             true
                         }
                         Err(e) => {
