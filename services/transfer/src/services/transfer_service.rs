@@ -408,6 +408,7 @@ mod tests {
     use sqlx::postgres::PgPoolOptions;
 
     use crate::{
+        cache::{CacheClient, NoOpCache},
         config::env::AppConfig,
         models::dto::{CreateTransferRequest, ListTransfersQuery},
         repositories::{
@@ -433,6 +434,7 @@ mod tests {
             },
             TransferRepository::new(pool.clone()),
             AuditRepository::new(pool),
+            CacheClient::NoOp(NoOpCache),
         );
 
         let result = service
