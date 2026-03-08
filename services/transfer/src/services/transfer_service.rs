@@ -388,6 +388,8 @@ impl TransferService {
 
 #[cfg(test)]
 mod tests {
+    use sqlx::postgres::PgPoolOptions;
+
     use crate::{
         config::env::AppConfig,
         models::dto::{CreateTransferRequest, ListTransfersQuery},
@@ -399,15 +401,20 @@ mod tests {
 
     #[tokio::test]
     async fn list_requires_one_filter() {
+        let pool = PgPoolOptions::new()
+            .connect_lazy("postgres://postgres:postgres@localhost:5432/canbankx_transfer")
+            .expect("failed to create lazy pool for tests");
+
         let service = TransferService::new(
             AppConfig {
                 host: "127.0.0.1".to_string(),
                 port: 8080,
+                database_url: "postgres://postgres:postgres@localhost:5432/canbankx_transfer".to_string(),
                 account_service_base_url: "http://127.0.0.1:65535".to_string(),
                 user_service_base_url: "http://127.0.0.1:65536".to_string(),
             },
-            TransferRepository::new(),
-            AuditRepository::new(),
+            TransferRepository::new(pool.clone()),
+            AuditRepository::new(pool),
         );
 
         let result = service

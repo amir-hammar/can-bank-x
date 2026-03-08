@@ -35,7 +35,7 @@ Services:
 - Gateway from host: `http://localhost:8080`
 - Gateway from containers: `http://api-gateway:8080`
 - Keycloak: `http://localhost:8082`
-- Grafana: `http://localhost:3001` (`admin` / `admin`)
+- Grafana: `http://localhost:3001` (`admin` / `admin_password`)
 
 ## Deploy (One Command)
 
@@ -294,7 +294,7 @@ The collection/environment defines and uses:
 
 1. Import collections folder in Postman.
 2. Run this minimal flow top-to-bottom:
-  - **Customer 1 (Sender)**:
+  - **Customer 1 (Receiver)**:
     - `CU-01 / 01.01 Ouvrir Page Inscription` - Register first customer
     - `CU-02 / 02.01 Ouvrir Page Connexion` - Login customer 1
     - `CU-02 / 02.02 Get Profile` - Get customer profile
@@ -304,15 +304,14 @@ The collection/environment defines and uses:
     - `CU-04 / 04.01 Lister comptes client` - List accounts
     - `CU-04 / 04.02 Consulter solde du compte` - Check account balance
     - `CU-04 / 04.03 Consulter historique des transactions` - View transaction history
-  - **Customer 2 (Receiver) - Required for transfers**:
+  - **Customer 2 (Sender) - Required for transfers**:
     - `CU-01 / 01.01 Ouvrir Page Inscription` - Register second customer with different credentials
     - `CU-02 / 02.01 Ouvrir Page Connexion` - Login customer 2
     - `CU-02 / 02.02 Get Profile` - Get customer 2 profile (note: `beneficiary_username`)
     - `CU-02 / 02.03 Get KYC Status` - Check KYC status
     - `CU-03 / 03.01 Créer compte CHEQUING` - Create at least one account (becomes default)
-  - **Transfer (back to Customer 1 context)**:
-    - Switch back to customer 1's `access_token`
-    - `CU-05 / 05.01 Effectuer virement par username` - Transfer using customer 2's username
+  - **Transfer**:
+    - `CU-05 / 05.01 Effectuer virement par username` - Transfer using customer 1's username
     - `CU-05 / 05.02 Consulter details du virement` - View transfer details
     - `CU-05 / 05.03 Lister historique client` - View transfer history
 
@@ -345,16 +344,17 @@ The collection/environment defines and uses:
 5. Complete OTP/MFA when prompted.
 6. Copy the returned `access_token`, open `CU-02 / 02.02 Get Profile`, then in the request Authorization tab paste it in `access_token`. Make sure there are no trailing spaces or newline characters at the end of the pasted token because it may prevent the token from working.
 7. Send `02.02 Get Profile` to retrieve customer info.
-8. In the `02.02 Get Profile` response body, copy the customer `id` (you will need it for UC-03).
-10. Send `02.03 Get KYC Status` to retrieve KYC state.
+8. Send `02.03 Get KYC Status` to retrieve KYC state.
 
 ### UC-03 Step-by-step (Ouverture d'un compte bancaire)
 
 1. Ensure you already have a valid `access_token` from UC-02.
 2. Open folder `CU-03 Ouverture d'un compte bancaire`.
 3. Send `03.01 Créer compte CHEQUING`.
-4. Request body fields to change:
-  - `customer_id`: uses `{{account_customer_id}}` (must be the `id` copied from `CU-02 / 02.02 Get Profile`)
+4. Request body fields:
+  - `customer_id`: uses `{{account_customer_id}}` (auto-set from `CU-02 / 02.02 Get Profile` when `data.username` is present)
+  - `account_type`: `CHEQUING` or `SAVINGS`
+  - `initial_balance`: initial amount (example `1000`)
 5. Expected result: `201 Created`.
 6. Postman test script automatically stores:
   - `account_id` into `{{account_id}}`
@@ -367,8 +367,7 @@ The collection/environment defines and uses:
 1. Ensure you already created at least one account in UC-03.
 2. Open folder `CU-04 Consultation des soldes et historiques`.
 3. Send `04.01 Lister comptes client`.
-4. In Postman Params for `04.01 Lister comptes client`, paste the copied customer `id` into `account_customer_id`.
-5. Query parameter `customer_id` must use `{{account_customer_id}}` (UUID from `CU-02 / 02.02 Get Profile`, not username).
+4. Query parameter `customer_id` uses `{{account_customer_id}}` (set by UC-03), to avoid mismatch with `{{username}}`.
 5. Expected result: `200 OK` with an array of accounts.
 6. Postman test script stores first `account_id` from list into `{{account_id}}`.
 7. Send `04.02 Consulter solde du compte`.

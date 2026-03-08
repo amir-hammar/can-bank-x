@@ -4,6 +4,7 @@ use crate::{
     },
     utils::errors::AppError,
 };
+use uuid::Uuid;
 
 pub fn is_valid_account_type(value: &str) -> bool {
     matches!(value, "CHEQUING" | "SAVINGS")
@@ -26,6 +27,13 @@ pub fn validate_create_account_payload(payload: &CreateAccountRequest) -> Result
         }
     }
 
+    if Uuid::parse_str(payload.customer_id.trim()).is_err() {
+        return Err(AppError::bad_request(
+            "INVALID_CUSTOMER_ID",
+            "customer_id must be a valid UUID",
+        ));
+    }
+
     Ok(())
 }
 
@@ -34,6 +42,13 @@ pub fn validate_list_accounts_query(query: &ListAccountsQuery) -> Result<(), App
         return Err(AppError::bad_request(
             "INVALID_CUSTOMER_ID",
             "customer_id query parameter is required",
+        ));
+    }
+
+    if Uuid::parse_str(query.customer_id.trim()).is_err() {
+        return Err(AppError::bad_request(
+            "INVALID_CUSTOMER_ID",
+            "customer_id must be a valid UUID",
         ));
     }
 
@@ -56,6 +71,13 @@ pub fn validate_customer_id(customer_id: &str) -> Result<(), AppError> {
         return Err(AppError::bad_request(
             "INVALID_CUSTOMER_ID",
             "customer_id query parameter is required",
+        ));
+    }
+
+    if Uuid::parse_str(customer_id.trim()).is_err() {
+        return Err(AppError::bad_request(
+            "INVALID_CUSTOMER_ID",
+            "customer_id must be a valid UUID",
         ));
     }
 

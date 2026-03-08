@@ -1,9 +1,24 @@
+use sqlx::postgres::PgPoolOptions;
 use account_service::{app_state::AppState, config::env::AppConfig, create_app};
 
 #[tokio::main]
 async fn main() {
     let config = AppConfig::from_env();
-    let state = AppState::new();
+    
+    // Create database pool
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .connect(&config.database_url)
+        .await
+        .expect("failed to connect to database");
+
+    // Run migrations
+    sqlx::migrate!("./migrations")
+        .run(&pool)
+        .await
+        .expect("failed to run migrations");
+
+    let state = AppState::new(pool).await;
     let app = create_app(state);
 
     let listener = tokio::net::TcpListener::bind(config.address())

@@ -3,6 +3,7 @@ use std::env;
 pub struct AppConfig {
     pub host: String,
     pub port: u16,
+    pub database_url: String,
 }
 
 impl AppConfig {
@@ -12,8 +13,10 @@ impl AppConfig {
             .ok()
             .and_then(|value| value.parse::<u16>().ok())
             .unwrap_or(8080);
+        let database_url = env::var("ACCOUNT_SERVICE_DATABASE_URL")
+            .expect("ACCOUNT_SERVICE_DATABASE_URL must be set");
 
-        Self { host, port }
+        Self { host, port, database_url }
     }
 
     pub fn address(&self) -> String {
