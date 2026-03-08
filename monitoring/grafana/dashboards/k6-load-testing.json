@@ -1,0 +1,153 @@
+{
+  "id": null,
+  "uid": "canbankx-k6-load",
+  "title": "CanBankX - k6 Load Testing",
+  "tags": ["canbankx", "k6", "loadtest"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+        "query": {
+          "query": "label_values(k6_http_reqs_total, service)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "definition": "label_values(k6_http_reqs_total, service)",
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "regex": "",
+        "sort": 1,
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*"
+      },
+      {
+        "name": "endpoint",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+        "query": {
+          "query": "label_values(k6_http_reqs_total{service=~\"$service\"}, endpoint)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "definition": "label_values(k6_http_reqs_total{service=~\"$service\"}, endpoint)",
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "regex": "",
+        "sort": 1,
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*"
+      },
+      {
+        "name": "method",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+        "query": {
+          "query": "label_values(k6_http_reqs_total{service=~\"$service\",endpoint=~\"$endpoint\"}, method)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "definition": "label_values(k6_http_reqs_total{service=~\"$service\",endpoint=~\"$endpoint\"}, method)",
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "regex": "",
+        "sort": 1,
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Throughput (req/s) by Service/Endpoint/Method",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum by (service, endpoint, method) (rate(k6_http_reqs_total{service=~\"$service\", endpoint=~\"$endpoint\", method=~\"$method\"}[1m]))",
+          "legendFormat": "{{service}} {{method}} {{endpoint}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Latency p95/p99 by Service (ms)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "max by (service) (k6_http_req_duration_p95{service=~\"$service\", endpoint=~\"$endpoint\", method=~\"$method\"})",
+          "legendFormat": "{{service}} p95",
+          "refId": "A"
+        },
+        {
+          "expr": "max by (service) (k6_http_req_duration_p99{service=~\"$service\", endpoint=~\"$endpoint\", method=~\"$method\"})",
+          "legendFormat": "{{service}} p99",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Total Requests per Second (global)",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "sum(rate(k6_http_reqs_total{service=~\"$service\", endpoint=~\"$endpoint\", method=~\"$method\"}[1m]))",
+          "legendFormat": "total req/s",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Average Latency by Service/Endpoint/Method (ms)",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+      "targets": [
+        {
+          "expr": "max by (service, endpoint, method) (k6_http_req_duration_avg{service=~\"$service\", endpoint=~\"$endpoint\", method=~\"$method\"})",
+          "legendFormat": "{{service}} {{method}} {{endpoint}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Total Requests",
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 24 },
+      "targets": [
+        {
+          "expr": "sum(k6_http_reqs_total{service=~\"$service\", endpoint=~\"$endpoint\", method=~\"$method\"})",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Latest p95 (max across selection)",
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 24 },
+      "targets": [
+        {
+          "expr": "max(k6_http_req_duration_p95{service=~\"$service\", endpoint=~\"$endpoint\", method=~\"$method\"})",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Latest p99 (max across selection)",
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 24 },
+      "targets": [
+        {
+          "expr": "max(k6_http_req_duration_p99{service=~\"$service\", endpoint=~\"$endpoint\", method=~\"$method\"})",
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}
