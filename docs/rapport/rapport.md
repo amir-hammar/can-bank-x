@@ -143,6 +143,33 @@ Ce diagramme montre un déploiement Docker Compose sur un réseau partagé `can-
 - `Circuit Breaker / Timeout control`: limitation des temps d'attente pour éviter le blocage en cascade.
 - `Observabilité`: logs structurés, métriques Prometheus et tableaux de bord Grafana.
 
+### Normalisation des erreurs API
+
+La normalisation des erreurs API est importante dans une architecture microservices. Elle garantit des réponses cohérentes entre services, facilite le débogage et rend le comportement plus prévisible pour les clients (frontend, tests, scripts d'intégration). Elle améliore aussi l'observabilité, car les erreurs deviennent plus simples à filtrer et à corréler.
+
+Le système utilise un format d'erreur standardisé, par exemple:
+
+```json
+{
+    "error": "INVALID_REQUEST",
+    "message": "Initial balance must be greater than or equal to 0",
+    "status": 400,
+    "trace_id": "abc123"
+}
+```
+
+Signification des champs:
+- `error`: code d'erreur fonctionnel ou technique, stable pour le client.
+- `message`: description lisible de l'erreur.
+- `status`: code HTTP associé (ex: `400`, `404`, `500`).
+- `trace_id`: identifiant de traçage pour relier la requête aux logs et aux métriques.
+
+Cette normalisation est appliquée à deux niveaux:
+- API Gateway: gestion de certaines erreurs HTTP transversales (authentification, routage, politiques gateway).
+- Microservices: validation métier et erreurs applicatives dans les contrôleurs/services, avec un format uniforme avant retour au client.
+
+Cette approche améliore la maintenabilité, accélère le diagnostic, facilite le monitoring des erreurs et simplifie l'intégration côté client.
+
 ### Golden Signals
 
 - Latence: p95, p99 sur les requêtes API.
