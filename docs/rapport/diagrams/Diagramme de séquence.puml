@@ -1,0 +1,56 @@
+@startuml Diagramme de séquence
+title Création d'un compte chèque
+
+actor Client
+participant "NGINX\nLoad Balancer" as LB
+participant "KrakenD\nAPI Gateway" as GW
+participant "AccountController" as CTRL
+participant "AccountService" as SVC
+participant "Validators" as VAL
+participant "AccountRepository" as REPO
+database "PostgreSQL\n(account, account_balances)" as DB
+participant "Redis Cache" as REDIS
+participant "AuditRepository" as AUDIT
+
+Client -> LB: POST /api/v1/accounts/create\nAuthorization: Bearer ...\n{customer_id, account_type=CHEQUING, initial_balance}
+LB -> GW: Proxy HTTP
+GW -> GW: Valider JWT\nPropager claims + headers
+GW -> CTRL: POST /api/v1/accounts/create
+
+CTRL -> SVC: create_account(payload, trace_id)
+SVC -> VAL: validate_create_account_payload(payload)
+
+alt Payload invalide
+    VAL --> SVC: AppError(400)
+    SVC --> CTRL: erreur
+    CTRL --> GW: 400 Bad Request
+    GW --> LB: 400
+    LB --> Client: 400 + message d'erreur
+else Payload valide
+    VAL --> SVC: OK
+    SVC -> REPO: create_account(payload)
+    REPO -> DB: SELECT COUNT(*) FROM accounts\nWHERE customer_id = ?
+    DB --> REPO: count
+    REPO -> DB: INSERT INTO accounts (..., type='CHEQUING', status='OPEN', is_default)
+    REPO -> DB: INSERT INTO account_balances (..., available, ledger)
+    DB --> REPO: écritures OK
+    REPO --> SVC: Compte créé
+
+    SVC -> REPO: list_accounts_by_customer(customer_id)
+    REPO -> DB: SELECT comptes du client
+    DB --> REPO: liste des comptes
+    REPO --> SVC: comptes mis à jour
+
+    SVC -> REDIS: SET balance:{account_id} (TTL 300s)
+    SVC -> REDIS: SET accounts:{customer_id} (TTL 300s)
+    SVC -> AUDIT: append(..., "ACCOUNT_CREATED", ...)
+    AUDIT -> DB: INSERT INTO audit_log (...)
+    DB --> AUDIT: OK
+
+    SVC --> CTRL: CreateAccountResponse
+    CTRL --> GW: 201 Created + JSON
+    GW --> LB: 201
+    LB --> Client: 201 Created
+end
+
+@enduml
