@@ -1,0 +1,84 @@
+@startuml Diagramme de composants
+title CanBankX - Diagramme de composants
+skinparam componentStyle rectangle
+
+actor "Client API" as Client
+
+component "Edge Load Balancer\n(NGINX)" as LB
+component "API Gateway\n(KrakenD)" as GW
+
+package "User Service" {
+    component "User API\n/auth, /customers, /kyc" as UserAPI
+    component "CustomerService" as CustomerSvc
+    component "KycService" as KycSvc
+    component "CustomerRepository" as CustomerRepo
+    component "KycRepository" as KycRepo
+    component "AuditRepository" as UserAudit
+    component "KycMockService" as KycMock
+}
+
+package "Account Service" {
+    component "Account API\n/accounts, /balance, /default, /apply-transfer" as AccountAPI
+    component "AccountService" as AccountSvc
+    component "AccountRepository" as AccountRepo
+    component "AuditRepository" as AccountAudit
+    component "Account Cache" as AccountCache
+}
+
+package "Transfer Service" {
+    component "Transfer API\n/transfers" as TransferAPI
+    component "TransferService" as TransferSvc
+    component "TransferRepository" as TransferRepo
+    component "Transfer Cache" as TransferCache
+    component "AuditRepository" as TransferAudit
+}
+
+database "PostgreSQL\n(canbankx_user)" as DBUser
+database "PostgreSQL\n(canbankx_account)" as DBAccount
+database "PostgreSQL\n(canbankx_transfer)" as DBTransfer
+component "Redis" as Redis
+component "Prometheus" as Prom
+component "Grafana" as Grafana
+component "Keycloak" as Keycloak
+
+Client --> LB
+LB --> GW
+
+GW --> UserAPI
+GW --> AccountAPI
+GW --> TransferAPI
+GW --> Keycloak
+
+UserAPI --> CustomerSvc
+UserAPI --> KycSvc
+CustomerSvc --> CustomerRepo
+KycSvc --> KycRepo
+KycSvc --> KycMock
+KycSvc --> UserAudit
+CustomerRepo --> DBUser
+KycRepo --> DBUser
+UserAudit --> DBUser
+
+AccountAPI --> AccountSvc
+AccountSvc --> AccountRepo
+AccountSvc --> AccountAudit
+AccountSvc --> AccountCache
+AccountRepo --> DBAccount
+AccountAudit --> DBAccount
+AccountCache --> Redis
+
+TransferAPI --> TransferSvc
+TransferSvc --> TransferRepo
+TransferSvc --> TransferCache
+TransferSvc --> TransferAudit
+TransferSvc --> UserAPI : GET /customers/by-username
+TransferSvc --> AccountAPI : GET /accounts/default\nGET /accounts/balance\nPOST /accounts/apply-transfer
+TransferRepo --> DBTransfer
+TransferAudit --> DBTransfer
+TransferCache --> Redis
+
+UserAPI --> Prom
+AccountAPI --> Prom
+TransferAPI --> Prom
+Prom --> Grafana
+@enduml

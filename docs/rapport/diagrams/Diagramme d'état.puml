@@ -1,0 +1,18 @@
+@startuml Diagramme d'états
+title CanBankX - Diagramme d'états (KYC d'un client)
+
+[*] --> PENDING : submit_kyc
+
+PENDING --> PENDING : kyc_status [délai < 15 s]
+PENDING --> APPROVED : kyc_status [délai >= 15 s\net full_name + nas correspondent\nà une identité mock]
+PENDING --> REJECTED : kyc_status [délai >= 15 s\net aucune correspondance mock]
+
+APPROVED --> APPROVED : consultation du statut KYC
+REJECTED --> PENDING : nouvelle soumission KYC
+
+note right of PENDING
+Source de décision mock:
+services/user/mock-data/kyc/identity-mock.json
+Champs utilisés: full_name, nas
+end note
+@enduml

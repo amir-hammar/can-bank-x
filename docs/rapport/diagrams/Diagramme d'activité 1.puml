@@ -1,0 +1,67 @@
+@startuml Diagramme d'activité 1
+title CanBankX - Diagramme d'activité (Portée et contexte)
+
+start
+:Accéder à la plateforme CanBankX;
+
+if (Nouvel utilisateur ?) then (oui)
+  :Choisir « Sign-Up »;
+  :Saisir les informations d'inscription;
+  :Créer le profil utilisateur;
+  :Configurer la méthode MFA;
+  :Saisir le code OTP;
+  :Vérifier le dossier KYC;
+else (non)
+  :Choisir « Sign-In »;
+  :Saisir les informations de connexion;
+  :Saisir le code OTP;
+endif
+
+if (Authentification et KYC valide ?) then (oui)
+
+  repeat
+    :Afficher la page principale;
+
+    if (Consulter les comptes ?) then (oui)
+      :Afficher les comptes;
+
+      if (Créer un compte ?) then (oui)
+        :Choisir le type de compte;
+        :Saisir le solde initial;
+        :Créer le compte;
+      endif
+
+      :Retourner à la page principale;
+
+    else (non)
+
+      if (Effectuer un transfert ?) then (oui)
+        :Afficher la page de transfert;
+        :Sélectionner le compte source;
+        :Saisir le nom d'utilisateur du destinataire;
+        :Saisir le montant à envoyer;
+        :Valider la demande de transfert;
+
+        if (Transfert valide ?) then (oui)
+          :Exécuter le transfert;
+          :Afficher la confirmation;
+        else (non)
+          :Afficher le refus du transfert;
+        endif
+
+        :Retourner à la page principale;
+
+      else (non)
+      endif
+
+    endif
+
+  repeat while (Logout ?) is (non)
+
+else (non)
+  :Refuser l'accès;
+  :Afficher un message d'erreur d'authentification / KYC;
+endif
+
+stop
+@enduml
