@@ -13,6 +13,7 @@
   - `canbankx_transfer`
 
 Services:
+- `website`: `http://localhost:8083`
 - `user-service`
 - `account-service`
 - `transfer-service`
@@ -26,7 +27,7 @@ Services:
 
 ## Déploiement (commande unique)
 
-- `sh deploy/deploy.sh`
+- `sh can-bank-x-main/deploy/deploy.sh`
 
 What it does:
 - creates docker network
@@ -59,7 +60,7 @@ Exécution recommandée:
 3. Dans l'onglet `Authorization` de la requête Postman, il faut aller en bas de la page et:
 - cliquer `Clear Cookies`;
 - cliquer `Get New Access Token`.
-4. Dans la page Keycloak ouverte, choisir `Register`.
+4. Dans la page Keycloak ouverte, faire défiler vers le bas et choisir `Register`.
 5. Remplir les champs d'inscription et soumettre le formulaire.
 6. Pour obtenir un KYC `APPROVED` avec le mock, utiliser `Full name = Postman Gateway` (ou `Test`) et `NAS = 123456789`.
 7. Copier le `access_token` retourné.
@@ -76,7 +77,7 @@ Exécution recommandée:
 3. Dans Postman (`Authorization`):
 - cliquer `Clear Cookies`;
 - cliquer `Get New Access Token`.
-4. Se connecter dans Keycloak avec l'utilisateur créé au CU-01, ou avec `demo.customer`.
+4. Se connecter dans Keycloak avec l'utilisateur créé au CU-01, ou avec: `demo.customer` (username) `Passw0rd!123`(password).
 5. Si vous utilisez `demo.customer`, il faudra configurer son MFA (OTP) lors de la première connexion.
 6. Compléter l'étape OTP/MFA.
 7. Copier le `access_token`, puis le coller dans `CU-02 / 02.02 Get Profile`, en s'assurant qu'il n'y a pas d'espace ou de saut de ligne à la fin (erreur très fréquente).
