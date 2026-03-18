@@ -77,10 +77,16 @@ Composants clés :
 
 
 <p align="center">
-    <img src="images/Diagramme%20activité%201.png" alt="Diagramme de composants" />
+    <img src="images/Diagramme%20de%20composants.png" alt="Diagramme de composants" />
 </p>
 
 Ce diagramme montre les blocs de construction réels du code: routes, services, repositories, cache Redis, bases PostgreSQL par domaine, et dépendances inter-services pour le parcours de transfert.
+
+<p align="center">
+    <img src="images/Diagramme%20de%20classe.png" alt="Diagramme de classe microservices" />
+</p>
+
+Ce diagramme de classe expose les structs et implémentations Rust de chaque service. Pour chaque domaine (`User`, `Account`, `Transfer`), les contrôleurs reçoivent l'état, invoquent les services métier, qui eux-mêmes utilisent les repositories pour persister les données et le cache Redis pour optimiser les lectures. Les dependencies inter-services (Transfer→User, Transfer→Account) sont montrées en pointillé pour signaler une communication HTTP entre services.
 
 <p align="center">
     <img src="images/Diagramme%20états.png" alt="Diagramme d'états" />

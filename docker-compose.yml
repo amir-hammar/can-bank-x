@@ -159,12 +159,11 @@ services:
     networks:
       - can-bank-x-network
 
-  api-gateway:
-    build:
-      context: ./gateway
-      dockerfile: Dockerfile
-    expose:
-      - "8080"
+  nginx-load-balancer:
+    image: nginx:1.27-alpine
+    container_name: nginx-load-balancer
+    volumes:
+      - ./gateway/nginx/load-balancer.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       user-service:
         condition: service_healthy
@@ -172,10 +171,8 @@ services:
         condition: service_healthy
       transfer-service:
         condition: service_healthy
-      keycloak:
-        condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      test: ["CMD-SHELL", "nginx -t || exit 1"]
       interval: 10s
       timeout: 3s
       retries: 10
@@ -183,18 +180,20 @@ services:
     networks:
       - can-bank-x-network
 
-  edge-load-balancer:
-    image: nginx:1.27-alpine
-    container_name: edge-load-balancer
+  api-gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
     ports:
       - "8080:8080"
-    volumes:
-      - ./gateway/nginx/load-balancer.conf:/etc/nginx/nginx.conf:ro
     depends_on:
-      api-gateway:
+      nginx-load-balancer:
+        condition: service_healthy
+      keycloak:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "nginx -t || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
       interval: 10s
       timeout: 3s
       retries: 10
