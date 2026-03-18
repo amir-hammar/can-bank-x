@@ -1,11 +1,11 @@
 @startuml Diagramme de composants
-title CanBankX - Diagramme de composants
+title CanBankX - Diagramme de composants (Architecture avec NGINX Load Balancer)
 skinparam componentStyle rectangle
 
 actor "Client API" as Client
 
-component "Edge Load Balancer\n(NGINX)" as LB
-component "API Gateway\n(KrakenD)" as GW
+component "API Gateway\n(KrakenD :8080)" as GW
+component "NGINX Load Balancer\n(internal :8080)" as LB
 
 package "User Service" {
     component "User API\n/auth, /customers, /kyc" as UserAPI
@@ -41,13 +41,14 @@ component "Prometheus" as Prom
 component "Grafana" as Grafana
 component "Keycloak" as Keycloak
 
-Client --> LB
-LB --> GW
+Client --> GW : HTTP :8080
+GW --> LB : routing + auth validation
 
-GW --> UserAPI
-GW --> AccountAPI
-GW --> TransferAPI
-GW --> Keycloak
+LB --> UserAPI : /customers /auth /kyc\n(least_conn LB)
+LB --> AccountAPI : /accounts\n(least_conn LB)
+LB --> TransferAPI : /transfers\n(least_conn LB)
+
+GW --> Keycloak : JWT validation
 
 UserAPI --> CustomerSvc
 UserAPI --> KycSvc
@@ -71,14 +72,15 @@ TransferAPI --> TransferSvc
 TransferSvc --> TransferRepo
 TransferSvc --> TransferCache
 TransferSvc --> TransferAudit
-TransferSvc --> UserAPI : GET /customers/by-username
-TransferSvc --> AccountAPI : GET /accounts/default\nGET /accounts/balance\nPOST /accounts/apply-transfer
+TransferSvc -.-> UserAPI : HTTP calls
+TransferSvc -.-> AccountAPI : HTTP calls
 TransferRepo --> DBTransfer
 TransferAudit --> DBTransfer
 TransferCache --> Redis
 
-UserAPI --> Prom
-AccountAPI --> Prom
-TransferAPI --> Prom
+UserAPI --> Prom : metrics
+AccountAPI --> Prom : metrics
+TransferAPI --> Prom : metrics
+GW --> Prom : metrics
 Prom --> Grafana
 @enduml

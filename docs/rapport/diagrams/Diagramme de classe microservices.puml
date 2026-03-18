@@ -1,0 +1,171 @@
+@startuml microservices_class_diagram
+!define ABSTRACT abstract
+!define STRUCT struct
+
+skinparam classBackgroundColor #FEFECE
+skinparam classBorderColor #A80036
+skinparam classArrowColor #A80036
+
+package "USER SERVICE" {
+  class AppState <<struct>> {
+    pool: PgPool
+    kyc_mock_data_path: String
+  }
+
+  class AuthService <<struct>> {
+    {abstract} auth_me(pool: PgPool, keycloak_sub: str): AuthResponse
+  }
+
+  class CustomerService <<struct>> {
+    {abstract} register(pool: PgPool, headers: HeaderMap): CustomerResponse
+    {abstract} me(pool: PgPool, keycloak_sub: str): CustomerResponse
+    {abstract} get_by_username(pool: PgPool, username: str): CustomerResponse
+  }
+
+  class KYCService <<struct>> {
+    {abstract} submit_kyc(pool: PgPool, keycloak_sub: str): KYCResponse
+    {abstract} confirm_kyc(pool: PgPool, keycloak_sub: str): KYCResponse
+    {abstract} kyc_status(pool: PgPool, keycloak_sub: str): KYCStatus
+  }
+
+  class AuthController {
+    {abstract} me(state: AppState, headers: HeaderMap): AuthResponse
+  }
+
+  class CustomerController {
+    {abstract} register(state: AppState, headers: HeaderMap): CustomerResponse
+    {abstract} me(state: AppState, headers: HeaderMap): CustomerResponse
+    {abstract} get_by_username(state: AppState): CustomerResponse
+  }
+
+  class KYCController {
+    {abstract} submit_kyc(state: AppState, headers: HeaderMap): KYCResponse
+    {abstract} confirm_kyc(state: AppState, headers: HeaderMap): KYCResponse
+    {abstract} kyc_status(state: AppState, headers: HeaderMap): KYCStatus
+  }
+
+  class CustomerRepository <<struct>> {
+    {abstract} create(pool: PgPool, customer: Customer): Customer
+    {abstract} find_by_id(pool: PgPool, id: UUID): Customer
+    {abstract} find_by_keycloak_sub(pool: PgPool, sub: str): Customer
+  }
+
+  class KYCRepository <<struct>> {
+    {abstract} create(pool: PgPool, kyc: KYCCase): KYCCase
+    {abstract} find_by_customer_id(pool: PgPool, customer_id: UUID): KYCCase
+    {abstract} update_status(pool: PgPool, id: UUID, status: str): KYCCase
+  }
+
+  AuthService --> AppState : uses
+  CustomerService --> AppState : uses
+  KYCService --> AppState : uses
+  AuthController --> AuthService : calls
+  CustomerController --> CustomerService : calls
+  KYCController --> KYCService : calls
+  CustomerService --> CustomerRepository : uses
+  KYCService --> KYCRepository : uses
+}
+
+package "ACCOUNT SERVICE" {
+  class AppState <<struct>> {
+    pool: PgPool
+    account_service: AccountService
+    cache: Cache
+  }
+
+  class AccountService <<struct>> {
+    {abstract} create_account(request: CreateAccountRequest): CreateAccountResponse
+    {abstract} list_accounts(customer_id: UUID): Vec<Account>
+    {abstract} get_balance(account_id: UUID): AccountBalance
+    {abstract} get_default_account(customer_id: UUID): Account
+    {abstract} apply_transfer(request: ApplyTransferRequest): ApplyTransferResponse
+  }
+
+  class AccountController <<struct>> {
+    {abstract} create_account(state: AppState, headers: HeaderMap): CreateAccountResponse
+    {abstract} list_accounts(state: AppState, headers: HeaderMap): Vec<Account>
+    {abstract} get_balance(state: AppState, headers: HeaderMap): AccountBalance
+    {abstract} get_default_account(state: AppState, headers: HeaderMap): Account
+    {abstract} apply_transfer(state: AppState, headers: HeaderMap): ApplyTransferResponse
+  }
+
+  class AccountRepository <<struct>> {
+    {abstract} create(pool: PgPool, account: Account): Account
+    {abstract} find_by_id(pool: PgPool, id: UUID): Account
+    {abstract} find_by_customer(pool: PgPool, customer_id: UUID): Vec<Account>
+    {abstract} update_balance(pool: PgPool, id: UUID, amount: Decimal): Account
+  }
+
+  class AuditRepository <<struct>> {
+    {abstract} log_event(pool: PgPool, event: AuditLog): AuditLog
+  }
+
+  class Cache <<struct>> {
+    {abstract} get(key: str): Option<T>
+    {abstract} set(key: str, value: T, ttl: Duration)
+    {abstract} invalidate(key: str)
+  }
+
+  AccountService --> AccountRepository : uses
+  AccountService --> AuditRepository : uses
+  AccountService --> Cache : uses
+  AccountController --> AccountService : calls
+}
+
+package "TRANSFER SERVICE" {
+  class AppState <<struct>> {
+    pool: PgPool
+    transfer_service: TransferService
+    cache: Cache
+  }
+
+  class TransferService <<struct>> {
+    {abstract} create_transfer(request: CreateTransferRequest): TransferResponse
+    {abstract} list_transfers(account_id: UUID): Vec<Transfer>
+    {abstract} get_transfer(id: UUID): Transfer
+  }
+
+  class TransferController <<struct>> {
+    {abstract} create_transfer(state: AppState, headers: HeaderMap): TransferResponse
+    {abstract} list_transfers(state: AppState, headers: HeaderMap): Vec<Transfer>
+    {abstract} get_transfer(state: AppState, headers: HeaderMap): Transfer
+  }
+
+  class TransferRepository <<struct>> {
+    {abstract} create(pool: PgPool, transfer: Transfer): Transfer
+    {abstract} find_by_id(pool: PgPool, id: UUID): Transfer
+    {abstract} find_by_account(pool: PgPool, account_id: UUID): Vec<Transfer>
+  }
+
+  class AuditRepository <<struct>> {
+    {abstract} log_event(pool: PgPool, event: AuditLog): AuditLog
+  }
+
+  TransferService --> TransferRepository : uses
+  TransferService --> AuditRepository : uses
+  TransferService --> Cache : uses
+  TransferController --> TransferService : calls
+}
+
+package "EXTERNAL SERVICES" {
+  class UserServiceClient {
+    {abstract} get_customer(customer_id: UUID): Customer
+    {abstract} get_by_username(username: str): Customer
+  }
+
+  class AccountServiceClient {
+    {abstract} get_balance(account_id: UUID): Balance
+    {abstract} apply_transfer(request: ApplyTransferRequest): Response
+  }
+
+  class KeycloakClient {
+    {abstract} validate_token(token: str): KeycloakToken
+    {abstract} get_user_info(sub: str): KeycloakUserInfo
+  }
+}
+
+TransferService --> UserServiceClient : calls
+TransferService --> AccountServiceClient : calls
+AuthService --> KeycloakClient : calls
+
+@enduml

@@ -1,46 +1,63 @@
 @startuml Diagramme de déploiement
-title Déploiement CanBankX (Docker Compose)
+title Déploiement CanBankX
 
 actor "Client externe" as Client
 
 node "Hôte Docker" as Host {
     node "Réseau Docker\ncan-bank-x-network" as Net {
-        node "edge-load-balancer\nNGINX :8080" as LB <<container>>
-        node "api-gateway\nKrakenD :8080\nx1..x4 réplicas" as GW <<container>>
-        node "user-service\nRust/Axum :8080" as US <<container>>
-        node "account-service\nRust/Axum :8080" as AS <<container>>
-        node "transfer-service\nRust/Axum :8080" as TS <<container>>
-        node "keycloak\nOIDC/JWT :8080 (hôte 8082)" as KC <<container>>
+        node "api-gateway\nKrakenD :8080\n(hôte 8080)" as GW <<container>>
+        node "nginx-load-balancer\nNGINX :8080" as LB <<container>>
+        node "user-service\nRust/Axum :8080\nx1..xN réplicas" as US <<container>>
+        node "account-service\nRust/Axum :8080\nx1..xN réplicas" as AS <<container>>
+        node "transfer-service\nRust/Axum :8080\nx1..xN réplicas" as TS <<container>>
+        node "keycloak\nOIDC/JWT :8080\n(hôte 8082)" as KC <<container>>
         database "postgres\ncanbankx_user\ncanbankx_account\ncanbankx_transfer" as DB <<container>>
-        node "redis :6379" as RC <<container>>
-        node "prometheus :9090" as PR <<container>>
-        node "grafana :3000 (hôte 3001)" as GF <<container>>
-        node "postgres-exporter :9187" as PE <<container>>
-        node "node-exporter :9100" as NE <<container>>
-        node "cadvisor :8080" as CV <<container>>
+        node "redis\nCache :6379" as RC <<container>>
+        node "prometheus\nMetrics :9090" as PR <<container>>
+        node "grafana\nDashboards :3000\n(hôte 3001)" as GF <<container>>
+        node "postgres-exporter\n:9187" as PE <<container>>
+        node "node-exporter\n:9100" as NE <<container>>
+        node "cadvisor\n:8080" as CV <<container>>
     }
 }
 
-Client --> LB : HTTP :8080
-LB --> GW : Reverse proxy / load balancing
-GW --> US : API User/KYC
-GW --> AS : API Account
-GW --> TS : API Transfer
-GW --> KC : Validation JWT (JWK)
+Client --> GW : HTTP :8080 (entry point)
+GW --> LB : Routing + Auth validation\n(KrakenD → NGINX)
+LB --> US : /api/v1/customers\n/api/v1/auth\n/api/v1/kyc
+LB --> AS : /api/v1/accounts
+LB --> TS : /api/v1/transfers
+GW --> KC : Keycloak JWT validation
 
-US --> DB : SQL (canbankx_user)
-AS --> DB : SQL (canbankx_account)
-TS --> DB : SQL (canbankx_transfer)
-AS --> RC : Cache
-TS --> RC : Cache
+US --> DB : SQL Query\n(canbankx_user)
+AS --> DB : SQL Query\n(canbankx_account)
+AS --> RC : Cache layer
+TS --> DB : SQL Query\n(canbankx_transfer)
+TS --> RC : Cache layer
+TS -.-> US : Inter-service call\n(HTTP)
+TS -.-> AS : Inter-service call\n(HTTP)
 
+PR --> GW : scrape /metrics
 PR --> US : scrape /metrics
 PR --> AS : scrape /metrics
 PR --> TS : scrape /metrics
-PR --> GW : scrape /metrics
 PR --> KC : scrape /metrics
 PR --> PE : scrape
 PR --> NE : scrape
 PR --> CV : scrape
-GF --> PR : Query dashboards
+GF --> PR : Query metrics\nfor dashboards
+
+note right of LB
+  Load balancing par service:
+  - least_conn algorithm
+  - Health checks
+  - Failover support
+end note
+
+note right of GW
+  API Gateway:
+  - Routing
+  - Authentication
+  - CORS
+  - Rate limiting
+end note
 @enduml

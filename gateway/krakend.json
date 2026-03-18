@@ -78,7 +78,7 @@
       "backend": [
         {
           "host": [
-            "http://user-service:8080"
+            "http://nginx-load-balancer:8080"
           ],
           "url_pattern": "/health"
         }
@@ -288,7 +288,7 @@
       "backend": [
         {
           "host": [
-            "http://user-service:8080"
+            "http://nginx-load-balancer:8080"
           ],
           "url_pattern": "/api/v1/auth/me",
           "encoding": "no-op"
@@ -362,7 +362,7 @@
       "backend": [
         {
           "host": [
-            "http://user-service:8080"
+            "http://nginx-load-balancer:8080"
           ],
           "url_pattern": "/api/v1/customers/register",
           "encoding": "no-op"
@@ -435,7 +435,7 @@
       "backend": [
         {
           "host": [
-            "http://user-service:8080"
+            "http://nginx-load-balancer:8080"
           ],
           "url_pattern": "/api/v1/customers/{path}",
           "encoding": "no-op"
@@ -512,7 +512,7 @@
       "backend": [
         {
           "host": [
-            "http://user-service:8080"
+            "http://nginx-load-balancer:8080"
           ],
           "url_pattern": "/api/v1/kyc/{path}",
           "encoding": "no-op"
@@ -558,7 +558,7 @@
       "backend": [
         {
           "host": [
-            "http://account-service:8080"
+            "http://nginx-load-balancer:8080"
           ],
           "url_pattern": "/api/v1/accounts/create",
           "encoding": "no-op"
@@ -607,7 +607,7 @@
       "backend": [
         {
           "host": [
-            "http://account-service:8080"
+            "http://nginx-load-balancer:8080"
           ],
           "url_pattern": "/api/v1/accounts",
           "encoding": "no-op"
@@ -656,7 +656,7 @@
       "backend": [
         {
           "host": [
-            "http://account-service:8080"
+            "http://nginx-load-balancer:8080"
           ],
           "url_pattern": "/api/v1/accounts/balance",
           "encoding": "no-op"
@@ -705,7 +705,7 @@
       "backend": [
         {
           "host": [
-            "http://account-service:8080"
+            "http://nginx-load-balancer:8080"
           ],
           "url_pattern": "/api/v1/accounts/default",
           "encoding": "no-op"
@@ -743,7 +743,7 @@
       "backend": [
         {
           "host": [
-            "http://transfer-service:8080"
+            "http://nginx-load-balancer:8080"
           ],
           "url_pattern": "/api/v1/transfers",
           "encoding": "no-op"
@@ -786,7 +786,7 @@
       "backend": [
         {
           "host": [
-            "http://transfer-service:8080"
+            "http://nginx-load-balancer:8080"
           ],
           "url_pattern": "/api/v1/transfers",
           "encoding": "no-op"
@@ -824,7 +824,7 @@
       "backend": [
         {
           "host": [
-            "http://transfer-service:8080"
+            "http://nginx-load-balancer:8080"
           ],
           "url_pattern": "/api/v1/transfers/{id}",
           "encoding": "no-op"
