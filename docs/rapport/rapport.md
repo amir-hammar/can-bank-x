@@ -316,20 +316,26 @@ Cette section présente les expériences de performance exécutées sur CanBankX
 
 ### Méthodologie des tests
 
-Les tests de charge ont été exécutés avec `k6`. Les métriques ont été collectées par `Prometheus` puis visualisées dans `Grafana`.
+Les tests de charge ont été exécutés avec `k6`, les métriques ont été collectées par `Prometheus`, puis visualisées dans `Grafana`.
 
-La campagne a été réalisée en trois familles:
-- scénario de référence sans cache Redis;
-- scénario avec cache Redis activé sur les lectures concernées;
-- scénario avec montée en charge horizontale du gateway (`1` à `4` instances) via le load balancer NGINX.
+Toutes les campagnes ont été réalisées sur la VM fournie pour le projet (`vm-amir-log430`), et non sur une machine locale de développement. Les exécutions ont été faites via `docker-compose`, avec Keycloak pour l'authentification et KrakenD comme point d'entrée API.
 
-Les campagnes de charge ont été configurées pour viser un niveau élevé de trafic, avec une cible principale autour de `660` requêtes par seconde pour les scénarios métiers, et un objectif minimal de `600` requêtes par seconde.
+La campagne a été organisée en deux axes:
+- comparaison `sans cache` vs `cache Redis activé`;
+- montée en charge horizontale des services (`1` à `4` instances) derrière le load balancer NGINX.
 
-Les indicateurs observés dans les tableaux de bord sont:
-- latence `P95` et `P99`;
-- requêtes par seconde (throughput);
-- taux d'erreurs;
-- saturation CPU/mémoire quand elle est visible.
+Sur cette VM, la campagne a été stabilisée autour d'une cible opérationnelle d'environ `20 req/s` pour obtenir des résultats fiables et reproductibles sur les scénarios métiers.
+
+Paramètres de campagne:
+- durée de chaque exécution: `90s`;
+- charge visée: `~20 req/s`;
+- comparaison sur les configurations sans cache, avec cache, puis montée en charge de `1` à `4` instances.
+
+Les indicateurs suivis sont:
+- latence (`avg`, `P95`, `P99`);
+- throughput (requêtes par seconde);
+- taux d'erreurs (requêtes en échec et codes HTTP d'erreur);
+- stabilité sous charge (variation des courbes Grafana).
 
 ### Résultats sans cache
 
@@ -340,9 +346,20 @@ Les captures suivantes correspondent au baseline sans cache. Elles servent de po
 ![Résultats sans cache - vue 3](images/without-cache-3.png)
 ![Résultats sans cache - vue 4](images/without-cache-4.png)
 
-Sur ces vues sans cache, on observe le comportement de référence: la latence et le débit restent dépendants de la pression directe sur PostgreSQL. Les graphiques de requêtes et de latence montrent la réponse du système sans optimisation de lecture, ce qui constitue la base de comparaison pour les sections suivantes.
+Captures console `k6` associées (sans cache):
 
-En termes de débit, les courbes montrent que le système atteint un palier de plusieurs centaines de requêtes par seconde, avec une référence autour du seuil cible (`600+` req/s) selon la charge appliquée.
+![k6 sans cache - run 1](images/k6-without-cache-1.png)
+![k6 sans cache - run 2](images/k6-without-cache-2.png)
+![k6 sans cache - run 3](images/k6-without-cache-3.png)
+![k6 sans cache - run 4](images/k6-without-cache-4.png)
+
+Ces vues représentent le comportement de référence: la latence est plus sensible à la charge de lecture sur PostgreSQL et les courbes sont moins stables que dans la configuration avec cache. Ce baseline sert de point de comparaison direct pour évaluer le gain de Redis.
+
+Mesures observées dans Grafana sur les runs de référence (sans cache):
+- débit nominal autour de `20 req/s` (plateau proche de la cible configurée);
+- latence moyenne élevée (ordre de grandeur autour de `500 ms` sur les runs chargés);
+- pics de latence `P95` pouvant dépasser `2 s` dans les configurations les moins favorables;
+- stabilité globalement inférieure à la configuration avec cache.
 
 ### Résultats avec Redis
 
@@ -353,37 +370,58 @@ Les captures suivantes montrent la configuration avec cache Redis activé.
 ![Résultats avec Redis - vue 3](images/with-cache-3.png)
 ![Résultats avec Redis - vue 4](images/with-cache-4.png)
 
-Par comparaison avec les captures sans cache, ces vues montrent une réduction de la pression sur la base pour les lectures répétitives. L'effet attendu est visible sur la stabilité des courbes de latence et sur la capacité à soutenir plus de requêtes, avec un taux d'erreurs maîtrisé selon les dashboards.
+Captures console `k6` associées (avec cache):
 
-Le throughput observé devient plus stable autour des paliers élevés de charge, ce qui confirme que l'activation de Redis aide à maintenir les requêtes par seconde atteintes pendant les tests.
+![k6 avec cache - run 1](images/k6-with-cache-1.png)
+![k6 avec cache - run 2](images/k6-with-cache-2.png)
+![k6 avec cache - run 3](images/k6-with-cache-3.png)
+![k6 avec cache - run 4](images/k6-with-cache-4.png)
+
+Par comparaison avec le baseline, l'activation de Redis réduit la pression de lecture sur PostgreSQL et améliore la stabilité des temps de réponse. Les tableaux de bord Grafana montrent un taux d'erreurs maîtrisé (`http_req_failed` proche de `0%` dans les runs stables) et un throughput maintenu autour de la cible configurée sur la VM.
+
+Mesures observées dans Grafana avec cache activé:
+- taux d'erreurs proche de `0%` sur les runs stables;
+- throughput maintenu autour de `20 req/s`;
+- latence selon le niveau de scale:
+- cache + 1 instance: `avg≈514 ms`, `P95≈2.15 s`;
+- cache + 4 instances: `avg≈91 ms`, `P95≈519 ms`, `max≈1.55 s`.
 
 ### Résultats avec load balancing
 
 Les tests de scalabilité ont été exécutés avec `1`, `2`, `3` et `4` instances, en distribution de trafic via NGINX vers `api-gateway`.
 
-Pour l'analyse, la comparaison des captures sans cache et avec cache permet aussi d'observer l'impact de la montée en charge:
-- les premières vues représentent le comportement avec un niveau d'instances minimal;
-- les vues suivantes montrent l'évolution quand la capacité horizontale augmente.
+L'analyse croisée des runs montre que la montée de `1` à `4` instances améliore la robustesse sous charge sur l'infrastructure disponible: la distribution de trafic limite les pics de latence et améliore la régularité du comportement applicatif, surtout lorsque Redis est activé.
 
-Les graphiques indiquent que la répartition de charge améliore la tenue du système sous trafic plus élevé. Quand le nombre d'instances augmente, la capacité globale progresse et les métriques de latence restent plus stables, en particulier avec Redis activé.
+Comparaison chiffrée (cache activé):
+- débit: stable autour de `20 req/s` dans les deux cas (`1` et `4` instances);
+- latence moyenne: `~514 ms` -> `~91 ms` (amélioration d'environ `82%`);
+- latence `P95`: `~2.15 s` -> `~519 ms` (amélioration d'environ `76%`);
+- taux d'erreur: maintenu à `0%` dans les runs stables.
 
-Dans ce contexte, l'architecture atteint et soutient les objectifs de débit visés (au moins `600` req/s, avec des campagnes ciblées à `660` req/s) de manière plus robuste lorsque plusieurs instances sont actives.
+Sur la VM fournie, ce scaling horizontal permet principalement d'améliorer la stabilité et de mieux absorber la charge cible des tests, plutôt que de viser des débits extrêmes.
 
 ### Analyse globale
 
-L'ensemble des captures Grafana met en évidence trois points:
-- Redis améliore les performances en lecture et réduit la charge directe sur PostgreSQL.
-- Le load balancing avec plusieurs instances augmente la capacité du système à absorber le trafic.
-- L'architecture microservices de CanBankX supporte bien la scalabilité horizontale, avec une meilleure stabilité des indicateurs quand le cache et la distribution de charge sont combinés.
+L'ensemble des captures Grafana et k6 met en évidence trois points:
+- Redis améliore les performances de lecture et réduit la pression directe sur PostgreSQL.
+- Le load balancing avec plusieurs instances améliore la tenue sous charge et la stabilité des métriques.
+- L'architecture microservices de CanBankX se comporte de manière plus régulière quand cache + distribution de charge sont combinés.
+
+Synthèse chiffrée de la campagne:
+- `8` runs principaux (sans cache + avec cache, de `1` à `4` instances);
+- `90s` par run, soit `12` minutes de charge active au total (hors temps de préparation);
+- volume typique par run stable visible sur Grafana: ~`1800` requêtes;
+- volume total traité sur les `8` runs stables: ~`14 400` requêtes;
+- objectif opérationnel atteint sur VM: stabilité autour de `20 req/s` avec erreurs nulles sur les runs valides.
 
 ### Conclusion des tests
 
-Les tests confirment que l'architecture choisie est cohérente avec les objectifs de performance du projet.
-- Le scénario sans cache fournit un baseline utile pour la comparaison.
-- L'activation de Redis améliore les lectures et la stabilité des temps de réponse.
-- La montée en charge de `1` à `4` instances via load balancing améliore le throughput et la robustesse opérationnelle.
+Les tests confirment que l'architecture est cohérente avec les objectifs de performance du projet dans le contexte de la VM fournie.
+- Le scénario sans cache fournit un baseline clair.
+- L'activation de Redis améliore la stabilité des lectures et la régularité des temps de réponse.
+- La montée en charge de `1` à `4` instances renforce la robustesse opérationnelle.
 
-En résumé, les résultats observés dans Grafana montrent que CanBankX peut maintenir un comportement stable sous charge, tout en bénéficiant clairement du cache Redis et de la scalabilité horizontale.
+En résumé, les résultats observés dans Grafana montrent que CanBankX maintient un comportement stable sous charge sur l'infrastructure de test, avec un bénéfice net du cache Redis et de la scalabilité horizontale.
 
 ## Éléments techniques supplémentaires
 
