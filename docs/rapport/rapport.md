@@ -1,5 +1,9 @@
 # Rapport - CanBankX (Phase 1)
 
+ÉTS - LOG430 - Architecture logicielle - Hiver 2026
+
+Étudiant : Amir Hammar
+
 ## Arc42
 Cette section présente la documentation d'architecture du projet CanBankX selon le modèle Arc42.
 
