@@ -10,8 +10,8 @@ use crate::{
     models::dto::{
         AccountBalanceQuery, AccountBalanceResponse, AccountSummaryResponse, ApplyTransferRequest,
         ApplyTransferResponse, CreditAccountRequest, CreditAccountResponse,
-        CreateAccountRequest, CreateAccountResponse, DefaultAccountQuery,
-        DefaultAccountResponse, ListAccountsQuery,
+        CreateAccountRequest, CreateAccountResponse, DebitAccountRequest, DebitAccountResponse,
+        DefaultAccountQuery, DefaultAccountResponse, ListAccountsQuery,
     },
     utils::errors::AppError,
 };
@@ -108,6 +108,23 @@ pub async fn credit_account(
     let response = state
         .account_service
         .credit_account(payload, trace_id)
+        .await?;
+    Ok((StatusCode::OK, Json(response)))
+}
+
+pub async fn debit_account(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(payload): Json<DebitAccountRequest>,
+) -> Result<(StatusCode, Json<DebitAccountResponse>), AppError> {
+    let trace_id = headers
+        .get("X-Trace-Id")
+        .and_then(|value| value.to_str().ok())
+        .map(ToString::to_string);
+
+    let response = state
+        .account_service
+        .debit_account(payload, trace_id)
         .await?;
     Ok((StatusCode::OK, Json(response)))
 }

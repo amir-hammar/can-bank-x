@@ -313,6 +313,11 @@ impl AccountService {
             .delete(&format!("balance:{}", payload.account_id))
             .await;
 
+        // Invalidate accounts list cache
+        if let Some(acct) = self.repository.get_account_by_id(&payload.account_id).await {
+            let _ = self.cache.delete(&format!("accounts:{}", acct.customer_id)).await;
+        }
+
         self.audit_repository
             .append(
                 "SYSTEM",
@@ -325,6 +330,46 @@ impl AccountService {
             .await;
 
         Ok(CreditAccountResponse {
+            account_id: payload.account_id,
+            amount: payload.amount,
+            available_balance: new_balance,
+        })
+    }
+
+    pub async fn debit_account(
+        &self,
+        payload: crate::models::dto::DebitAccountRequest,
+        trace_id: Option<String>,
+    ) -> Result<crate::models::dto::DebitAccountResponse, AppError> {
+        if payload.account_id.trim().is_empty() {
+            return Err(AppError::bad_request("INVALID_ACCOUNT_ID", "account_id is required"));
+        }
+        if payload.amount <= 0.0 {
+            return Err(AppError::bad_request("INVALID_AMOUNT", "amount must be positive"));
+        }
+
+        let new_balance = self
+            .repository
+            .credit_balance(&payload.account_id, -payload.amount)
+            .await
+            .map_err(|e| match e {
+                CreditRepoError::AccountNotFound => {
+                    AppError::not_found("ACCOUNT_NOT_FOUND", "account_id was not found")
+                }
+            })?;
+
+        let _ = self.cache.delete(&format!("balance:{}", payload.account_id)).await;
+
+        // Invalidate accounts list cache
+        if let Some(acct) = self.repository.get_account_by_id(&payload.account_id).await {
+            let _ = self.cache.delete(&format!("accounts:{}", acct.customer_id)).await;
+        }
+
+        self.audit_repository
+            .append("SYSTEM", "account-service", "ACCOUNT_DEBITED", "ACCOUNT", &payload.account_id, trace_id)
+            .await;
+
+        Ok(crate::models::dto::DebitAccountResponse {
             account_id: payload.account_id,
             amount: payload.amount,
             available_balance: new_balance,

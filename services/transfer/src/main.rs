@@ -45,6 +45,7 @@ async fn main() {
             repo,
             config.central_bank_participant_id.clone(),
             config.central_bank_payment_service_url.clone(),
+            config.account_service_base_url.clone(),
         ));
 
         // Spawn the Kafka consumer as a background task

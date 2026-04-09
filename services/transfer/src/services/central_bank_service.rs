@@ -3,6 +3,13 @@ use reqwest::Client;
 use serde::Serialize;
 use uuid::Uuid;
 
+fn parse_account_id(raw: &str) -> Result<Uuid, crate::utils::errors::AppError> {
+    let stripped = raw.strip_prefix("acc_").unwrap_or(raw);
+    Uuid::parse_str(stripped).map_err(|_| {
+        crate::utils::errors::AppError::bad_request("INVALID_ACCOUNT_ID", "account_id must be a valid UUID")
+    })
+}
+
 use crate::repositories::central_bank_repository::{
     CentralBankRepository, PaymentLink, PendingAliasTransfer,
 };
@@ -15,6 +22,7 @@ pub struct CentralBankService {
     pub repo: CentralBankRepository,
     pub participant_id: String,
     pub payment_service_url: String,
+    pub account_service_url: String,
     http_client: Client,
 }
 
@@ -32,12 +40,14 @@ impl CentralBankService {
         repo: CentralBankRepository,
         participant_id: String,
         payment_service_url: String,
+        account_service_url: String,
     ) -> Self {
         Self {
             producer,
             repo,
             participant_id,
             payment_service_url,
+            account_service_url,
             http_client: Client::new(),
         }
     }
@@ -50,9 +60,7 @@ impl CentralBankService {
         _customer_id: &str,
         holder_name: &str,
     ) -> Result<PaymentLink, AppError> {
-        let account_uuid = Uuid::parse_str(account_id).map_err(|_| {
-            AppError::bad_request("INVALID_ACCOUNT_ID", "account_id must be a valid UUID")
-        })?;
+        let account_uuid = parse_account_id(account_id)?;
 
         // Delete old alias for this account if exists
         if let Some(old) = self.repo.find_link_by_account_id(account_uuid).await {
@@ -143,6 +151,21 @@ impl CentralBankService {
     ) -> Result<serde_json::Value, AppError> {
         let payment_id = Uuid::new_v4().to_string();
 
+        // Debit the sender's account immediately
+        let prefixed = if source_account_id.starts_with("acc_") {
+            source_account_id.to_string()
+        } else {
+            format!("acc_{}", source_account_id)
+        };
+        let debit_url = format!("{}/api/v1/accounts/debit", self.account_service_url.trim_end_matches('/'));
+        let debit_body = serde_json::json!({ "account_id": prefixed, "amount": amount });
+        let debit_resp = self.http_client.post(&debit_url).json(&debit_body).send().await
+            .map_err(|e| AppError::internal("DEBIT_ERROR", format!("failed to debit account: {}", e)))?;
+        if !debit_resp.status().is_success() {
+            let text = debit_resp.text().await.unwrap_or_default();
+            return Err(AppError::bad_request("DEBIT_FAILED", format!("failed to debit source account: {}", text)));
+        }
+
         self.producer
             .publish_payment_initiated(&payment_id, alias, amount, currency, idempotency_key)
             .await
@@ -197,7 +220,7 @@ impl CentralBankService {
             })?;
 
         // Save pending transfer so validation handler can find it
-        let account_uuid = uuid::Uuid::parse_str(receiving_account_id).unwrap_or_default();
+        let account_uuid = parse_account_id(receiving_account_id).unwrap_or_default();
         self.repo.create_pending_transfer(
             &transfer_id,
             alias,
@@ -276,9 +299,7 @@ impl CentralBankService {
         if account_id.is_empty() {
             return Ok(self.repo.list_all_active_links().await);
         }
-        let account_uuid = Uuid::parse_str(account_id).map_err(|_| {
-            AppError::bad_request("INVALID_ACCOUNT_ID", "account_id must be a valid UUID")
-        })?;
+        let account_uuid = parse_account_id(account_id)?;
         Ok(self.repo.list_links_by_account(account_uuid).await)
     }
 
@@ -294,9 +315,7 @@ impl CentralBankService {
         if account_id.is_empty() {
             return Ok(self.repo.find_all_pending().await);
         }
-        let account_uuid = Uuid::parse_str(account_id).map_err(|_| {
-            AppError::bad_request("INVALID_ACCOUNT_ID", "account_id must be a valid UUID")
-        })?;
+        let account_uuid = parse_account_id(account_id)?;
 
         Ok(self
             .repo

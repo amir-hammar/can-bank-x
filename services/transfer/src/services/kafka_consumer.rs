@@ -439,7 +439,7 @@ async fn handle_payment_settled(
     }
 
     // We are the CREDITOR — credit the destination account
-    if is_creditor && !is_debtor {
+    if is_creditor {
         let creditor_account_id = &evt.creditor_account_id;
         credit_account(
             http_client,
@@ -453,17 +453,14 @@ async fn handle_payment_settled(
             "PaymentSettled: credited account {} with {} for PaymentId={}",
             creditor_account_id, evt.amount, evt.payment_id
         );
-        return Ok(());
     }
 
-    // We are the DEBTOR — update the payment link status
-    // The payment_id was tracked when we initiated the payment
-    info!(
-        "PaymentSettled: payment {} settled by central bank (debtor side)",
-        evt.payment_id
-    );
-    // Note: we don't store payment_id → transfer mapping in this simple version,
-    // but the payment is confirmed settled. A future enhancement could link these.
+    if is_debtor {
+        info!(
+            "PaymentSettled: payment {} settled by central bank (debtor side)",
+            evt.payment_id
+        );
+    }
 
     Ok(())
 }
@@ -581,8 +578,14 @@ async fn credit_account(
         account_service_url.trim_end_matches('/')
     );
 
+    let prefixed = if account_id.starts_with("acc_") {
+        account_id.to_string()
+    } else {
+        format!("acc_{}", account_id)
+    };
+
     let body = serde_json::json!({
-        "account_id": format!("acc_{}", account_id),
+        "account_id": prefixed,
         "amount": amount
     });
 
@@ -611,9 +614,15 @@ async fn check_account_exists(
         account_service_url.trim_end_matches('/')
     );
 
+    let prefixed = if account_id.starts_with("acc_") {
+        account_id.to_string()
+    } else {
+        format!("acc_{}", account_id)
+    };
+
     let response = http_client
         .get(&url)
-        .query(&[("account_id", format!("acc_{}", account_id))])
+        .query(&[("account_id", &prefixed)])
         .send()
         .await?;
 
