@@ -73,6 +73,19 @@ pub struct ApplyTransferResponse {
     pub to_available_balance: f64,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct CreditAccountRequest {
+    pub account_id: String,
+    pub amount: f64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct CreditAccountResponse {
+    pub account_id: String,
+    pub amount: f64,
+    pub available_balance: f64,
+}
+
 #[derive(Debug, Serialize)]
 pub struct ErrorResponse {
     pub code: &'static str,

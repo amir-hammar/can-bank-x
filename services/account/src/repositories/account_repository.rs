@@ -15,6 +15,10 @@ pub enum ApplyTransferRepoError {
     InsufficientFunds,
 }
 
+pub enum CreditRepoError {
+    AccountNotFound,
+}
+
 impl AccountRepository {
     pub fn new(pool: PgPool) -> Self {
         Self { pool }
@@ -165,6 +169,47 @@ impl AccountRepository {
             ledger_balance: r.get(7),
             is_default: true,
         })
+    }
+
+    pub async fn credit_balance(
+        &self,
+        account_id: &str,
+        amount: f64,
+    ) -> Result<f64, CreditRepoError> {
+        let uuid_str = account_id.strip_prefix("acc_").unwrap_or(account_id);
+        let account_uuid =
+            Uuid::parse_str(uuid_str).map_err(|_| CreditRepoError::AccountNotFound)?;
+
+        let exists = sqlx::query("SELECT 1 FROM accounts WHERE id = $1")
+            .bind(account_uuid)
+            .fetch_optional(&self.pool)
+            .await
+            .ok()
+            .and_then(|opt| opt);
+
+        if exists.is_none() {
+            return Err(CreditRepoError::AccountNotFound);
+        }
+
+        let _ = sqlx::query(
+            "UPDATE account_balances
+             SET available = available + $2, ledger = ledger + $2
+             WHERE account_id = $1",
+        )
+        .bind(account_uuid)
+        .bind(amount)
+        .execute(&self.pool)
+        .await;
+
+        let new_balance: (f64,) = sqlx::query_as(
+            "SELECT COALESCE(available, 0.0)::double precision FROM account_balances WHERE account_id = $1",
+        )
+        .bind(account_uuid)
+        .fetch_one(&self.pool)
+        .await
+        .unwrap_or((0.0,));
+
+        Ok(new_balance.0)
     }
 
     pub async fn apply_transfer(

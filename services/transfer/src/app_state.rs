@@ -1,18 +1,25 @@
+use std::sync::Arc;
+
 use crate::{
     cache::{CacheClient, CacheConfig},
     config::env::AppConfig,
     repositories::{audit_repository::AuditRepository, transfer_repository::TransferRepository},
-    services::transfer_service::TransferService,
+    services::{central_bank_service::CentralBankService, transfer_service::TransferService},
 };
 use sqlx::PgPool;
 
 #[derive(Clone)]
 pub struct AppState {
     pub transfer_service: TransferService,
+    pub central_bank_service: Option<Arc<CentralBankService>>,
 }
 
 impl AppState {
-    pub async fn new(config: AppConfig, pool: PgPool) -> Self {
+    pub async fn new(
+        config: AppConfig,
+        pool: PgPool,
+        central_bank_service: Option<Arc<CentralBankService>>,
+    ) -> Self {
         let cache_config = CacheConfig::from_env();
         let cache = if cache_config.enabled {
             CacheClient::Redis(
@@ -37,6 +44,7 @@ impl AppState {
                 audit_repository,
                 cache,
             ),
+            central_bank_service,
         }
     }
 }

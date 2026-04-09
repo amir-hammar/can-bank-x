@@ -830,6 +830,18 @@
           "encoding": "no-op"
         }
       ]
-    }
+    },
+    { "endpoint": "/api/v1/central-bank/status", "method": "GET", "output_encoding": "no-op", "input_headers": ["Authorization"], "backend": [{ "host": ["http://nginx-load-balancer:8080"], "url_pattern": "/api/v1/central-bank/status", "encoding": "no-op" }] },
+    { "endpoint": "/api/v1/central-bank/aliases", "method": "GET", "output_encoding": "no-op", "input_headers": ["Authorization"], "input_query_strings": ["*"], "backend": [{ "host": ["http://nginx-load-balancer:8080"], "url_pattern": "/api/v1/central-bank/aliases", "encoding": "no-op" }] },
+    { "endpoint": "/api/v1/central-bank/aliases", "method": "POST", "output_encoding": "no-op", "input_headers": ["Authorization", "Content-Type"], "backend": [{ "host": ["http://nginx-load-balancer:8080"], "url_pattern": "/api/v1/central-bank/aliases", "encoding": "no-op" }] },
+    { "endpoint": "/api/v1/central-bank/aliases/lookup", "method": "GET", "output_encoding": "no-op", "input_headers": ["Authorization"], "input_query_strings": ["*"], "backend": [{ "host": ["http://nginx-load-balancer:8080"], "url_pattern": "/api/v1/central-bank/aliases/lookup", "encoding": "no-op" }] },
+    { "endpoint": "/api/v1/central-bank/payments", "method": "GET", "output_encoding": "no-op", "input_headers": ["Authorization"], "input_query_strings": ["*"], "backend": [{ "host": ["http://nginx-load-balancer:8080"], "url_pattern": "/api/v1/central-bank/payments", "encoding": "no-op" }] },
+    { "endpoint": "/api/v1/central-bank/payments", "method": "POST", "output_encoding": "no-op", "input_headers": ["Authorization", "Content-Type"], "backend": [{ "host": ["http://nginx-load-balancer:8080"], "url_pattern": "/api/v1/central-bank/payments", "encoding": "no-op" }] },
+    { "endpoint": "/api/v1/central-bank/alias-transfers", "method": "POST", "output_encoding": "no-op", "input_headers": ["Authorization", "Content-Type"], "backend": [{ "host": ["http://nginx-load-balancer:8080"], "url_pattern": "/api/v1/central-bank/alias-transfers", "encoding": "no-op" }] },
+    { "endpoint": "/api/v1/central-bank/alias-transfers/pending", "method": "GET", "output_encoding": "no-op", "input_headers": ["Authorization"], "input_query_strings": ["*"], "backend": [{ "host": ["http://nginx-load-balancer:8080"], "url_pattern": "/api/v1/central-bank/alias-transfers/pending", "encoding": "no-op" }] },
+    { "endpoint": "/api/v1/central-bank/aliases/{alias}", "method": "DELETE", "output_encoding": "no-op", "input_headers": ["Authorization"], "backend": [{ "host": ["http://nginx-load-balancer:8080"], "url_pattern": "/api/v1/central-bank/aliases/{alias}", "encoding": "no-op" }] },
+    { "endpoint": "/api/v1/central-bank/alias-transfers/{id}/approve", "method": "POST", "output_encoding": "no-op", "input_headers": ["Authorization", "Content-Type"], "backend": [{ "host": ["http://nginx-load-balancer:8080"], "url_pattern": "/api/v1/central-bank/alias-transfers/{id}/approve", "encoding": "no-op" }] },
+    { "endpoint": "/api/v1/central-bank/alias-transfers/{id}/deny", "method": "POST", "output_encoding": "no-op", "input_headers": ["Authorization", "Content-Type"], "backend": [{ "host": ["http://nginx-load-balancer:8080"], "url_pattern": "/api/v1/central-bank/alias-transfers/{id}/deny", "encoding": "no-op" }] },
+    { "endpoint": "/api/v1/central-bank/settlement", "method": "GET", "output_encoding": "no-op", "input_headers": ["Authorization"], "input_query_strings": ["*"], "backend": [{ "host": ["http://nginx-load-balancer:8080"], "url_pattern": "/api/v1/central-bank/settlement", "encoding": "no-op" }] }
   ]
 }

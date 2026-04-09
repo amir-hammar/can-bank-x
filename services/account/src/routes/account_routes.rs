@@ -24,4 +24,8 @@ pub fn routes() -> Router<crate::app_state::AppState> {
             "/api/v1/accounts/apply-transfer",
             post(account_controller::apply_transfer),
         )
+        .route(
+            "/api/v1/accounts/credit",
+            post(account_controller::credit_account),
+        )
 }

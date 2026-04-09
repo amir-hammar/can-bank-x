@@ -37,6 +37,14 @@ impl AppError {
             message: message.into(),
         }
     }
+
+    pub fn internal(code: &'static str, message: impl Into<String>) -> Self {
+        Self {
+            status: StatusCode::INTERNAL_SERVER_ERROR,
+            code,
+            message: message.into(),
+        }
+    }
 }
 
 impl IntoResponse for AppError {

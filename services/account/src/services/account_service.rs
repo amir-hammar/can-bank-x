@@ -2,11 +2,12 @@ use crate::{
     cache::{Cache, CacheClient},
     models::dto::{
         AccountBalanceQuery, AccountBalanceResponse, AccountSummaryResponse, ApplyTransferRequest,
-        ApplyTransferResponse, CreateAccountRequest, CreateAccountResponse, DefaultAccountQuery,
+        ApplyTransferResponse, CreditAccountRequest, CreditAccountResponse,
+        CreateAccountRequest, CreateAccountResponse, DefaultAccountQuery,
         DefaultAccountResponse, ListAccountsQuery,
     },
     repositories::{
-        account_repository::{AccountRepository, ApplyTransferRepoError},
+        account_repository::{AccountRepository, ApplyTransferRepoError, CreditRepoError},
         audit_repository::AuditRepository,
     },
     utils::{errors::AppError, validators},
@@ -276,6 +277,57 @@ impl AccountService {
             currency: from_account.currency,
             from_available_balance: from_account.available_balance,
             to_available_balance: to_account.available_balance,
+        })
+    }
+
+    pub async fn credit_account(
+        &self,
+        payload: CreditAccountRequest,
+        trace_id: Option<String>,
+    ) -> Result<CreditAccountResponse, AppError> {
+        if payload.account_id.trim().is_empty() {
+            return Err(AppError::bad_request(
+                "INVALID_ACCOUNT_ID",
+                "account_id is required",
+            ));
+        }
+        if payload.amount <= 0.0 {
+            return Err(AppError::bad_request(
+                "INVALID_AMOUNT",
+                "amount must be positive",
+            ));
+        }
+
+        let new_balance = self
+            .repository
+            .credit_balance(&payload.account_id, payload.amount)
+            .await
+            .map_err(|e| match e {
+                CreditRepoError::AccountNotFound => {
+                    AppError::not_found("ACCOUNT_NOT_FOUND", "account_id was not found")
+                }
+            })?;
+
+        let _ = self
+            .cache
+            .delete(&format!("balance:{}", payload.account_id))
+            .await;
+
+        self.audit_repository
+            .append(
+                "SYSTEM",
+                "account-service",
+                "ACCOUNT_CREDITED",
+                "ACCOUNT",
+                &payload.account_id,
+                trace_id,
+            )
+            .await;
+
+        Ok(CreditAccountResponse {
+            account_id: payload.account_id,
+            amount: payload.amount,
+            available_balance: new_balance,
         })
     }
 

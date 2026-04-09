@@ -1,10 +1,12 @@
 FROM rust:1.89.0-bookworm AS deps
 WORKDIR /app
+RUN apt-get update && apt-get install -y cmake && rm -rf /var/lib/apt/lists/*
 COPY Cargo.toml .
 RUN mkdir src && echo 'fn main() {}' > src/main.rs && cargo build --release && rm -rf src
 
 FROM rust:1.89.0-bookworm AS builder
 WORKDIR /app
+RUN apt-get update && apt-get install -y cmake && rm -rf /var/lib/apt/lists/*
 COPY --from=deps /app/target target
 COPY . .
 RUN cargo build --release
